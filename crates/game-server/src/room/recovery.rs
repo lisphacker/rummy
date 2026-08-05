@@ -1,0 +1,1 @@
+//! Durable room recovery.

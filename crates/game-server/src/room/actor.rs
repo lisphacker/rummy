@@ -1,0 +1,1 @@
+//! Authoritative room actor.

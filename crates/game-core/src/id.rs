@@ -1,0 +1,1 @@
+//! Strongly typed domain identifiers.

@@ -1,0 +1,1 @@
+//! Shared immutable service handles.

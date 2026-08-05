@@ -1,0 +1,1 @@
+//! Channel-based room handle.

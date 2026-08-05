@@ -1,0 +1,1 @@
+//! Player seat component.

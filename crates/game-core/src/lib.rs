@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Pure, deterministic Rummy domain rules.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod card;
+pub mod command;
+pub mod deck;
+pub mod event;
+pub mod id;
+pub mod meld;
+pub mod player;
+pub mod rules;
+pub mod state;
+pub mod transition;
+pub mod view;

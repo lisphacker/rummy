@@ -1,14 +1,9 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Versioned transport messages shared by the server and UI.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod client;
+pub mod server;
+pub mod snapshot;
+pub mod version;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use client::{ClientEnvelope, ClientMessage};
+pub use version::PROTOCOL_VERSION;

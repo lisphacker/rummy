@@ -1,0 +1,1 @@
+//! Active room registry.

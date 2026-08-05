@@ -11,7 +11,7 @@ default-members = ["crates/game-server", "crates/game-ui"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.97"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
@@ -34,7 +34,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = { version = "1", features = ["serde"] }
 sqlx = {
-  version = "3.0.0",
+  version = "0.9",
   default-features = false,
   features = [
     "chrono",
@@ -42,7 +42,8 @@ sqlx = {
     "macros",
     "migrate",
     "postgres",
-    "runtime-tokio-rustls",
+    "runtime-tokio",
+    "tls-rustls-ring-webpki",
     "uuid",
   ]
 }
@@ -52,7 +53,7 @@ tokio = {
   features = ["macros", "rt-multi-thread", "signal", "sync", "time"]
 }
 tower-http = {
-  version = "0.6",
+  version = "0.7",
   features = ["compression-full", "cors", "request-id", "trace"]
 }
 tracing = "0.1"
@@ -63,9 +64,9 @@ tracing-subscriber = {
 uuid = { version = "1", features = ["serde", "v4"] }
 
 [workspace.lints.clippy]
-all = "warn"
+all = { level = "warn", priority = -1 }
 expect_used = "deny"
-pedantic = "warn"
+pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
 
 [workspace.lints.rust]

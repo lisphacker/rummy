@@ -1,6 +1,15 @@
 [package]
 name = "protocol"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
+game-core = { path = "../game-core" }
+serde.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

@@ -1,6 +1,22 @@
 [package]
 name = "game-core"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
+indexmap.workspace = true
+rand.workspace = true
+serde.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+rand_chacha.workspace = true
+test-support = { path = "../test-support" }
+
+[lints]
+workspace = true
