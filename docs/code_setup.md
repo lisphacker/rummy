@@ -508,20 +508,53 @@ uuid_id!(MeldId);
 uuid_id!(CardId);
 ```
 
-Represent a physical card separately from rank/suit. This is necessary when multiple decks are in use:
+Represent a card's face explicitly. A standard card always has both a rank and a
+suit, while a joker has neither:
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum Suit {
+    Clubs,
+    Diamonds,
+    Hearts,
+    Spades,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum Rank {
+    Ace,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum CardFace {
+    Standard { rank: Rank, suit: Suit },
+    Joker,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Card {
     pub id: CardId,
-    pub rank: Rank,
-    pub suit: Option<Suit>,
-    pub kind: CardKind,
+    pub face: CardFace,
     pub deck_index: u8,
 }
 ```
 
-A pair of identical-looking cards from two decks must still have different `CardId`s.
+`CardFace` makes invalid combinations, such as a joker with a rank or suit,
+unrepresentable. `Card` represents the physical card separately from its face;
+therefore, a pair of identical-looking cards from two decks must still have
+different `CardId`s.
 
 ## 8. Rules configuration
 
