@@ -14,7 +14,7 @@ thiserror.workspace = true
 uuid.workspace = true
 
 [features]
-default = []
+default = ["web"]
 desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
 web = ["dioxus/web"]

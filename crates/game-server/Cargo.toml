@@ -27,7 +27,7 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [features]
-default = []
+default = ["server"]
 desktop = ["dioxus/desktop", "game-ui/desktop"]
 mobile = ["dioxus/mobile", "game-ui/mobile"]
 server = ["dioxus/server"]
