@@ -1,0 +1,73 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/game-core",
+  "crates/game-server",
+  "crates/game-ui",
+  "crates/protocol",
+  "crates/test-support",
+]
+default-members = ["crates/game-server"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+axum = { version = "0.8", features = ["macros", "ws"] }
+chrono = {
+  version = "0.4",
+  default-features = false,
+  features = ["clock", "serde"]
+}
+dioxus = { version = "0.7", features = ["fullstack", "router"] }
+futures-util = "0.3"
+indexmap = { version = "2", features = ["serde"] }
+proptest = "1"
+rand = "0.10.2"
+rand_chacha = "0.10.0"
+secrecy = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smallvec = { version = "1", features = ["serde"] }
+sqlx = {
+  version = "3.0.0",
+  default-features = false,
+  features = [
+    "chrono",
+    "json",
+    "macros",
+    "migrate",
+    "postgres",
+    "runtime-tokio-rustls",
+    "uuid",
+  ]
+}
+thiserror = "2"
+tokio = {
+  version = "1",
+  features = ["macros", "rt-multi-thread", "signal", "sync", "time"]
+}
+tower-http = {
+  version = "0.6",
+  features = ["compression-full", "cors", "request-id", "trace"]
+}
+tracing = "0.1"
+tracing-subscriber = {
+  version = "0.3",
+  features = ["env-filter", "fmt", "json"]
+}
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[workspace.lints.clippy]
+all = "warn"
+expect_used = "deny"
+pedantic = "warn"
+unwrap_used = "deny"
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+unsafe_code = "forbid"
