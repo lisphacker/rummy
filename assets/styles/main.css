@@ -1,0 +1,24 @@
+:root {
+    color-scheme: light dark;
+    --table: #1f6a49;
+    --surface: #f8f6f1;
+    --ink: #181818;
+    --accent: #d19a35;
+    --danger: #b42318;
+    --card-ratio: 0.7142857;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
