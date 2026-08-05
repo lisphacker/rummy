@@ -441,7 +441,6 @@ Create `Dioxus.toml`:
 ```toml
 [application]
 name = "Rummy"
-default_platform = "web"
 out_dir = "dist"
 asset_dir = "assets"
 sub_package = "game-server"
@@ -454,6 +453,10 @@ watch_path = ["crates/game-ui", "crates/game-core", "crates/protocol", "assets"]
 
 [web.resource]
 style = ["/styles/main.css"]
+
+[web.resource.dev]
+style = []
+script = []
 ```
 
 The exact supported keys can change with the CLI, so validate with the installed Dioxus version and `dx --help`.
