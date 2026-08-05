@@ -1,9 +1,9 @@
 [package]
 name = "game-server"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
-license.workspace = true
 rust-version.workspace = true
+license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
@@ -28,10 +28,10 @@ uuid.workspace = true
 
 [features]
 default = []
-web = ["dioxus/web", "game-ui/web"]
-server = ["dioxus/server"]
 desktop = ["dioxus/desktop", "game-ui/desktop"]
 mobile = ["dioxus/mobile", "game-ui/mobile"]
+server = ["dioxus/server"]
+web = ["dioxus/web", "game-ui/web"]
 
 [lints]
 workspace = true
