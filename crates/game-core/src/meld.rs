@@ -107,7 +107,50 @@ fn validate_set_cards(cards: &[Card], require_complete: bool) -> GameResult<(Ran
     Ok((ranks[0], suits))
 }
 
-fn validate_run_cards(_cards: &[Card], _require_completee: bool) -> GameResult<(Suit, Rank, Rank)> {
+fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Suit, Rank, Rank)> {
+    if require_complete && cards.len() < 3 {
+        return error(MeldError::NotEnoughCardsForMeld);
+    }
+
+    let num_joker_cards = cards
+        .iter()
+        .filter(|card| matches!(card.face, crate::card::CardFace::Joker))
+        .count();
+    let non_joker_cards: Vec<&Card> = cards
+        .iter()
+        .filter(|card| !matches!(card.face, crate::card::CardFace::Joker))
+        .collect();
+    if non_joker_cards.is_empty() {
+        return error(MeldError::MeldMustHaveNonJokerCards);
+    }
+
+    let ranks: Vec<Rank> = non_joker_cards
+        .iter()
+        .map(|card| match card.face {
+            crate::card::CardFace::Standard { rank, .. } => rank,
+            crate::card::CardFace::Joker => unreachable!(),
+        })
+        .collect::<HashSet<Rank>>()
+        .into_iter()
+        .collect();
+
+    let suits: HashSet<Suit> = non_joker_cards
+        .iter()
+        .map(|card| match card.face {
+            crate::card::CardFace::Standard { suit, .. } => suit,
+            crate::card::CardFace::Joker => unreachable!(),
+        })
+        .collect();
+
+    if suits.len() != 1 {
+        return error(MeldError::RunMustHaveSameSuit);
+    }
+
+    if ranks.len() != non_joker_cards.len() {
+        // Must haveunique ranks
+        return error(MeldError::RunMustHaveConsecutiveRanks);
+    }
+
     todo!()
 }
 

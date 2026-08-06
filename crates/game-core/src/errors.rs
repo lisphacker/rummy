@@ -5,6 +5,8 @@ pub enum MeldError {
     SetMustHaveSameRank,
     SetMustHaveUniqueSuits,
     SetHasTooManyJokers,
+    RunMustHaveSameSuit,
+    RunMustHaveConsecutiveRanks,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
