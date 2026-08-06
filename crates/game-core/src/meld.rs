@@ -392,4 +392,52 @@ mod tests {
             ))
         ));
     }
+
+    #[test]
+    fn new_run_additional_ace_in_beginning() {
+        let cards = vec![
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Three, Suit::Clubs),
+            card(Rank::Four, Suit::Clubs),
+            card(Rank::Five, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_additional_ace_at_the_end() {
+        let cards = vec![
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Two, Suit::Clubs),
+            card(Rank::Three, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_jokers1() {
+        let cards = vec![
+            card(Rank::Two, Suit::Clubs),
+            card(Rank::Five, Suit::Clubs),
+            card(Rank::Seven, Suit::Clubs),
+            joker(),
+            joker(),
+            joker(),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(result.is_ok());
+    }
 }
