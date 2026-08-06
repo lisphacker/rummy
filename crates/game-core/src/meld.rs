@@ -39,17 +39,34 @@ impl Meld {
 
     pub fn add(&mut self, card: Card) -> GameResult<()> {
         match &mut self.meld_type {
-            MeldType::Set { .. } => self.add_to_set(card),
-            MeldType::Run { .. } => self.add_to_run(card),
+            MeldType::Set { rank, suits } => {
+                match card.face {
+                    crate::card::CardFace::Standard {
+                        rank: card_rank,
+                        suit,
+                    } => {
+                        if card_rank != *rank {
+                            return error(MeldError::SetMustHaveSameRank);
+                        }
+                        if suits.contains(&suit) {
+                            return error(MeldError::SetMustHaveUniqueSuits);
+                        }
+                        if suits.len() + 1 > 4 {
+                            return error(MeldError::SetCannotHaveMoreThanFourCards);
+                        }
+                        suits.insert(suit);
+                    }
+                    crate::card::CardFace::Joker => {
+                        if suits.len() + 1 > 4 {
+                            return error(MeldError::SetCannotHaveMoreThanFourCards);
+                        }
+                    }
+                }
+                self.card_ids.push(card.id);
+                Ok(())
+            }
+            MeldType::Run { suit, start, end } => todo!(),
         }
-    }
-
-    fn add_to_set(&mut self, _card: Card) -> GameResult<()> {
-        todo!()
-    }
-
-    fn add_to_run(&mut self, _card: Card) -> GameResult<()> {
-        todo!()
     }
 }
 

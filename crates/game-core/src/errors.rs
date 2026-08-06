@@ -6,6 +6,7 @@ pub enum MeldError {
     SetMustHaveSameRank,
     SetMustHaveUniqueSuits,
     SetHasTooManyJokers,
+    SetCannotHaveMoreThanFourCards,
     RunMustHaveSameSuit,
     RunMustHaveConsecutiveRanks,
     RankHasTooManyAces,
