@@ -68,6 +68,14 @@ pub fn incr_rank(rank: Rank, n: usize) -> Option<Rank> {
     usize_to_rank(rank_to_usize(rank) + n)
 }
 
+pub fn prev_rank(rank: Rank) -> Option<Rank> {
+    usize_to_rank(rank_to_usize(rank).checked_sub(1)?)
+}
+
+pub fn next_rank(rank: Rank) -> Option<Rank> {
+    usize_to_rank(rank_to_usize(rank) + 1)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CardFace {
     Standard { rank: Rank, suit: Suit },

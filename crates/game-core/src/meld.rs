@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    card::{Card, Rank, Suit, incr_rank},
+    card::{Card, Rank, Suit, incr_rank, next_rank, prev_rank},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
 };
@@ -198,10 +198,27 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
             let d = (Rank::King as usize - end as usize) + 1;
             if d - 1 <= remaining_jokers {
                 num_unused_ace_ranks -= 1;
-                // remaining_jokers -= d - 1;
+                remaining_jokers -= d - 1;
                 end = Rank::Ace;
             }
         }
+
+        while remaining_jokers > 0 {
+            if let Some(next_rank) = next_rank(end) {
+                end = next_rank;
+                remaining_jokers -= 1;
+            } else if let Some(prev_rank) = prev_rank(start) {
+                start = prev_rank;
+                remaining_jokers -= 1;
+            } else {
+                break;
+            }
+        }
+
+        if remaining_jokers > 0 {
+            return error(MeldError::MeldHasTooManyJokerCards);
+        }
+
         if num_unused_ace_ranks > 0 {
             return error(MeldError::RunMustHaveConsecutiveRanks);
         }
