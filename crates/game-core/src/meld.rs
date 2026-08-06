@@ -206,16 +206,14 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
             return error(MeldError::RunMustHaveConsecutiveRanks);
         }
         Ok((suits[0], start, end))
-    } else {
-        if num_ace_ranks == 1 && num_joker_cards >= 2 {
-            let start = Rank::Ace;
-            match incr_rank(start, num_joker_cards) {
-                Some(end) => Ok((suits[0], start, end)),
-                None => error(MeldError::RunMustHaveConsecutiveRanks),
-            }
-        } else {
-            error(MeldError::RunMustHaveConsecutiveRanks)
+    } else if num_ace_ranks == 1 && num_joker_cards >= 2 {
+        let start = Rank::Ace;
+        match incr_rank(start, num_joker_cards) {
+            Some(end) => Ok((suits[0], start, end)),
+            None => error(MeldError::RunMustHaveConsecutiveRanks),
         }
+    } else {
+        error(MeldError::RunMustHaveConsecutiveRanks)
     }
 }
 
