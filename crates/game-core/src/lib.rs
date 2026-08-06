@@ -3,6 +3,7 @@
 pub mod card;
 pub mod command;
 pub mod deck;
+pub mod errors;
 pub mod event;
 pub mod id;
 pub mod meld;

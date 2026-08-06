@@ -1,13 +1,37 @@
-use crate::id::CardId;
+use std::collections::HashSet;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+use crate::{
+    card::{Card, Rank, Suit},
+    errors::GameResult,
+    id::CardId,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MeldType {
-    Set,
-    Run,
+    Set { rank: Rank, suits: HashSet<Suit> },
+    Run { suit: Suit, start: Rank, end: Rank },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Meld {
-    pub meld_type: MeldType,
-    pub cards: Vec<CardId>,
+    meld_type: MeldType,
+    cards: Vec<CardId>,
+}
+
+impl Meld {
+    pub fn new_set(cards: &[Card]) -> GameResult<Self> {
+        todo!()
+    }
+
+    pub fn new_run(cards: &[Card]) -> GameResult<Self> {
+        todo!()
+    }
+
+    pub fn add_to_set(card: Card) -> GameResult<()> {
+        todo!()
+    }
+
+    pub fn add_to_run(card: Card) -> GameResult<()> {
+        todo!()
+    }
 }
