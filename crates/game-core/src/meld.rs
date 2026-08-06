@@ -168,17 +168,17 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
         return error(MeldError::RunMustHaveConsecutiveRanks);
     }
 
-    if sorted_non_ace_ranks.len() >= 1 {
+    if !sorted_non_ace_ranks.is_empty() {
         let mut start = sorted_non_ace_ranks[0];
         let mut end = sorted_non_ace_ranks[0];
 
         let mut remaining_jokers = num_joker_cards;
         for &rank in sorted_non_ace_ranks.iter().skip(1) {
-            let d = rank as u8 - end as u8;
+            let d = rank as usize - end as usize;
             if d == 1 {
                 end = rank;
-            } else if d - 1 <= remaining_jokers as u8 {
-                remaining_jokers -= (d - 1) as usize;
+            } else if d - 1 <= remaining_jokers {
+                remaining_jokers -= d - 1;
                 end = rank;
             } else {
                 return error(MeldError::RunMustHaveConsecutiveRanks);
@@ -187,18 +187,18 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
 
         let mut num_unused_ace_ranks = num_ace_ranks;
         if num_unused_ace_ranks > 0 {
-            let d = start as u8 - Rank::Ace as u8;
-            if d - 1 <= remaining_jokers as u8 {
+            let d = start as usize - Rank::Ace as usize;
+            if d - 1 <= remaining_jokers {
                 num_unused_ace_ranks -= 1;
-                remaining_jokers -= (d - 1) as usize;
+                remaining_jokers -= d - 1;
                 start = Rank::Ace;
             }
         }
         if num_unused_ace_ranks > 0 {
-            let d = (Rank::King as u8 - end as u8) + 1;
-            if d - 1 <= remaining_jokers as u8 {
+            let d = (Rank::King as usize - end as usize) + 1;
+            if d - 1 <= remaining_jokers {
                 num_unused_ace_ranks -= 1;
-                // remaining_jokers -= (d - 1) as usize;
+                // remaining_jokers -= d - 1;
                 end = Rank::Ace;
             }
         }
