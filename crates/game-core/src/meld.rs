@@ -120,3 +120,35 @@ fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
         Ok(card_ids.into_iter().collect())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Meld;
+    use crate::{
+        card::{Card, CardFace, Rank, Suit},
+        errors::GameError,
+        id::CardId,
+    };
+
+    fn card(rank: Rank, suit: Suit) -> Card {
+        Card {
+            id: CardId::new(),
+            face: CardFace::Standard { rank, suit },
+        }
+    }
+
+    #[test]
+    fn new_set_requires_at_least_three_cards() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Hearts),
+        ];
+        let result = Meld::new_set(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::NotEnoughCardsForMeld
+            ))
+        ));
+    }
+}
