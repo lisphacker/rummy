@@ -44,11 +44,11 @@ impl Meld {
         }
     }
 
-    fn add_to_set(&mut self, card: Card) -> GameResult<()> {
+    fn add_to_set(&mut self, _card: Card) -> GameResult<()> {
         todo!()
     }
 
-    fn add_to_run(&mut self, card: Card) -> GameResult<()> {
+    fn add_to_run(&mut self, _card: Card) -> GameResult<()> {
         todo!()
     }
 }
@@ -97,13 +97,13 @@ fn validate_set_cards(cards: &[Card], require_complete: bool) -> GameResult<(Ran
     }
 
     if suits.len() + num_joker_cards > 4 {
-        return error(MeldError::SetMustHaveUniqueSuits);
+        return error(MeldError::SetHasTooManyJokers);
     }
 
     Ok((*ranks.iter().next().unwrap(), suits))
 }
 
-fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Suit, Rank, Rank)> {
+fn validate_run_cards(_cards: &[Card], _require_completee: bool) -> GameResult<(Suit, Rank, Rank)> {
     todo!()
 }
 
@@ -132,6 +132,13 @@ mod tests {
         }
     }
 
+    fn joker() -> Card {
+        Card {
+            id: CardId::new(),
+            face: CardFace::Joker,
+        }
+    }
+
     #[test]
     fn new_set_requires_at_least_three_cards() {
         let cards = vec![
@@ -143,6 +150,68 @@ mod tests {
             result,
             Err(GameError::MeldError(
                 crate::errors::MeldError::NotEnoughCardsForMeld
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_set_has_no_non_joker_cards() {
+        let cards = vec![joker(), joker(), joker()];
+        let result = Meld::new_set(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::MeldMustHaveNonJokerCards
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_set_has_non_unique_ranks() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Hearts),
+            card(Rank::Seven, Suit::Diamonds),
+        ];
+        let result = Meld::new_set(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::SetMustHaveSameRank
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_set_has_non_unique_suits() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+        ];
+        let result = Meld::new_set(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::SetMustHaveUniqueSuits
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_set_has_two_many_jokers() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Hearts),
+            card(Rank::Seven, Suit::Diamonds),
+            joker(),
+            joker(),
+        ];
+        let result = Meld::new_set(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::SetHasTooManyJokers
             ))
         ));
     }

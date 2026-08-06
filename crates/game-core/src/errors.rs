@@ -4,6 +4,7 @@ pub enum MeldError {
     MeldMustHaveNonJokerCards,
     SetMustHaveSameRank,
     SetMustHaveUniqueSuits,
+    SetHasTooManyJokers,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
