@@ -7,6 +7,7 @@ pub enum MeldError {
     SetHasTooManyJokers,
     RunMustHaveSameSuit,
     RunMustHaveConsecutiveRanks,
+    RankHasTooManyAces,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

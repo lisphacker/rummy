@@ -130,8 +130,8 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
             crate::card::CardFace::Standard { rank, .. } => rank,
             crate::card::CardFace::Joker => unreachable!(),
         })
-        .collect::<HashSet<Rank>>()
-        .into_iter()
+        // .collect::<HashSet<Rank>>()
+        // .into_iter()
         .collect();
 
     let suits: Vec<Suit> = non_joker_cards
@@ -148,23 +148,25 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
         return error(MeldError::RunMustHaveSameSuit);
     }
 
-    if ranks.len() != non_joker_cards.len() {
-        // Must haveunique ranks
-        return error(MeldError::RunMustHaveConsecutiveRanks);
-    }
-
     let num_ace_ranks = ranks.iter().filter(|&&rank| rank == Rank::Ace).count();
     if num_ace_ranks > 2 {
-        return error(MeldError::RunMustHaveConsecutiveRanks);
+        return error(MeldError::RankHasTooManyAces);
     }
 
     let non_ace_ranks: Vec<Rank> = ranks
         .iter()
         .filter(|&&rank| rank != Rank::Ace)
         .copied()
-        .collect::<Vec<Rank>>();
+        .collect::<HashSet<Rank>>()
+        .into_iter()
+        .collect();
     let mut sorted_non_ace_ranks = non_ace_ranks.clone();
     sorted_non_ace_ranks.sort();
+
+    if non_ace_ranks.len() + num_ace_ranks != non_joker_cards.len() {
+        // Must have unique ranks
+        return error(MeldError::RunMustHaveConsecutiveRanks);
+    }
 
     if sorted_non_ace_ranks.len() >= 1 {
         let mut start = sorted_non_ace_ranks[0];
@@ -187,15 +189,17 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
         if num_unused_ace_ranks > 0 {
             let d = start as u8 - Rank::Ace as u8;
             if d - 1 <= remaining_jokers as u8 {
-                num_unused_ace_ranks -= (d - 1) as usize;
+                num_unused_ace_ranks -= 1;
+                remaining_jokers -= (d - 1) as usize;
                 start = Rank::Ace;
             }
         }
         if num_unused_ace_ranks > 0 {
-            let d = Rank::King as u8 - end as u8;
+            let d = (Rank::King as u8 - end as u8) + 1;
             if d - 1 <= remaining_jokers as u8 {
-                num_unused_ace_ranks -= (d - 1) as usize;
-                end = Rank::King;
+                num_unused_ace_ranks -= 1;
+                // remaining_jokers -= (d - 1) as usize;
+                end = Rank::Ace;
             }
         }
         if num_unused_ace_ranks > 0 {
@@ -367,6 +371,24 @@ mod tests {
             result,
             Err(GameError::MeldError(
                 crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_has_two_many_aces() {
+        let cards = vec![
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Two, Suit::Clubs),
+            card(Rank::Three, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RankHasTooManyAces
             ))
         ));
     }
