@@ -4,7 +4,6 @@ use crate::{
     card::{Card, Rank, Suit},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
-    meld,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -60,10 +59,6 @@ fn error<T>(e: MeldError) -> GameResult<T> {
 
 fn validate_set_cards(cards: &[Card], require_complete: bool) -> GameResult<(Rank, HashSet<Suit>)> {
     if require_complete && cards.len() < 3 {
-        return error(MeldError::NotEnoughCardsForMeld);
-    }
-
-    if cards.len() < 3 {
         return error(MeldError::NotEnoughCardsForMeld);
     }
 
