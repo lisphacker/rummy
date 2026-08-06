@@ -292,9 +292,10 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
 }
 
 fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
-    let card_ids: HashSet<CardId> = cards.iter().map(|card| card.id).collect();
-    if card_ids.len() == cards.len() {
-        Ok(card_ids.into_iter().collect())
+    let card_ids: Vec<CardId> = cards.iter().map(|card| card.id).collect();
+    let unique_card_ids: HashSet<CardId> = card_ids.iter().cloned().collect();
+    if unique_card_ids.len() == cards.len() {
+        Ok(card_ids)
     } else {
         error(MeldError::NotEnoughCardsForMeld)
     }
