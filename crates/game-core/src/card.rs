@@ -27,6 +27,47 @@ pub enum Rank {
     King,
 }
 
+fn rank_to_usize(rank: Rank) -> usize {
+    match rank {
+        Rank::Ace => 0,
+        Rank::Two => 1,
+        Rank::Three => 2,
+        Rank::Four => 3,
+        Rank::Five => 4,
+        Rank::Six => 5,
+        Rank::Seven => 6,
+        Rank::Eight => 7,
+        Rank::Nine => 8,
+        Rank::Ten => 9,
+        Rank::Jack => 10,
+        Rank::Queen => 11,
+        Rank::King => 12,
+    }
+}
+
+fn usize_to_rank(n: usize) -> Option<Rank> {
+    match n {
+        0 => Some(Rank::Ace),
+        1 => Some(Rank::Two),
+        2 => Some(Rank::Three),
+        3 => Some(Rank::Four),
+        4 => Some(Rank::Five),
+        5 => Some(Rank::Six),
+        6 => Some(Rank::Seven),
+        7 => Some(Rank::Eight),
+        8 => Some(Rank::Nine),
+        9 => Some(Rank::Ten),
+        10 => Some(Rank::Jack),
+        11 => Some(Rank::Queen),
+        12 => Some(Rank::King),
+        _ => None,
+    }
+}
+
+pub fn incr_rank(rank: Rank, n: usize) -> Option<Rank> {
+    usize_to_rank(rank_to_usize(rank) + n)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CardFace {
     Standard { rank: Rank, suit: Suit },

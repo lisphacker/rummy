@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    card::{Card, Rank, Suit},
+    card::{Card, Rank, Suit, incr_rank},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
 };
@@ -134,12 +134,14 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
         .into_iter()
         .collect();
 
-    let suits: HashSet<Suit> = non_joker_cards
+    let suits: Vec<Suit> = non_joker_cards
         .iter()
         .map(|card| match card.face {
             crate::card::CardFace::Standard { suit, .. } => suit,
             crate::card::CardFace::Joker => unreachable!(),
         })
+        .collect::<HashSet<Suit>>()
+        .into_iter()
         .collect();
 
     if suits.len() != 1 {
@@ -151,7 +153,66 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
         return error(MeldError::RunMustHaveConsecutiveRanks);
     }
 
-    todo!()
+    let num_ace_ranks = ranks.iter().filter(|&&rank| rank == Rank::Ace).count();
+    if num_ace_ranks > 2 {
+        return error(MeldError::RunMustHaveConsecutiveRanks);
+    }
+
+    let non_ace_ranks: Vec<Rank> = ranks
+        .iter()
+        .filter(|&&rank| rank != Rank::Ace)
+        .copied()
+        .collect::<Vec<Rank>>();
+    let mut sorted_non_ace_ranks = non_ace_ranks.clone();
+    sorted_non_ace_ranks.sort();
+
+    if sorted_non_ace_ranks.len() >= 1 {
+        let mut start = sorted_non_ace_ranks[0];
+        let mut end = sorted_non_ace_ranks[0];
+
+        let mut remaining_jokers = num_joker_cards;
+        for &rank in sorted_non_ace_ranks.iter().skip(1) {
+            let d = rank as u8 - end as u8;
+            if d == 1 {
+                end = rank;
+            } else if d - 1 <= remaining_jokers as u8 {
+                remaining_jokers -= (d - 1) as usize;
+                end = rank;
+            } else {
+                return error(MeldError::RunMustHaveConsecutiveRanks);
+            }
+        }
+
+        let mut num_unused_ace_ranks = num_ace_ranks;
+        if num_unused_ace_ranks > 0 {
+            let d = start as u8 - Rank::Ace as u8;
+            if d - 1 <= remaining_jokers as u8 {
+                num_unused_ace_ranks -= (d - 1) as usize;
+                start = Rank::Ace;
+            }
+        }
+        if num_unused_ace_ranks > 0 {
+            let d = Rank::King as u8 - end as u8;
+            if d - 1 <= remaining_jokers as u8 {
+                num_unused_ace_ranks -= (d - 1) as usize;
+                end = Rank::King;
+            }
+        }
+        if num_unused_ace_ranks > 0 {
+            return error(MeldError::RunMustHaveConsecutiveRanks);
+        }
+        Ok((suits[0], start, end))
+    } else {
+        if num_ace_ranks == 1 && num_joker_cards >= 2 {
+            let start = Rank::Ace;
+            match incr_rank(start, num_joker_cards) {
+                Some(end) => Ok((suits[0], start, end)),
+                None => error(MeldError::RunMustHaveConsecutiveRanks),
+            }
+        } else {
+            error(MeldError::RunMustHaveConsecutiveRanks)
+        }
+    }
 }
 
 fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
