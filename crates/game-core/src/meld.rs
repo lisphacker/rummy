@@ -338,4 +338,36 @@ mod tests {
             ))
         ));
     }
+
+    #[test]
+    fn new_run_has_more_than_one_suit() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Hearts),
+            card(Rank::Nine, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveSameSuit
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_has_repeating_ranks() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
 }
