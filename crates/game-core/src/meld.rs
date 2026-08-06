@@ -65,7 +65,47 @@ impl Meld {
                 self.card_ids.push(card.id);
                 Ok(())
             }
-            MeldType::Run { suit, start, end } => todo!(),
+            MeldType::Run { suit, start, end } => {
+                match card.face {
+                    crate::card::CardFace::Standard {
+                        rank: card_rank,
+                        suit: card_suit,
+                    } => {
+                        if card_suit != *suit {
+                            return error(MeldError::RunMustHaveSameSuit);
+                        }
+                        if let Some(new_start) = prev_rank(*start)
+                            && card_rank == new_start
+                        {
+                            *start = new_start;
+                            self.card_ids.push(card.id);
+                            return Ok(());
+                        }
+                        if let Some(new_end) = next_rank(*end)
+                            && card_rank == new_end
+                        {
+                            *end = new_end;
+                            self.card_ids.push(card.id);
+                            return Ok(());
+                        }
+                        return error(MeldError::RunMustHaveConsecutiveRanks);
+                    }
+                    crate::card::CardFace::Joker => {
+                        // Joker can be added to either end of the run
+                        if let Some(new_start) = prev_rank(*start) {
+                            *start = new_start;
+                            self.card_ids.push(card.id);
+                            return Ok(());
+                        }
+                        if let Some(new_end) = next_rank(*end) {
+                            *end = new_end;
+                            self.card_ids.push(card.id);
+                            return Ok(());
+                        }
+                        return error(MeldError::MeldHasTooManyJokerCards);
+                    }
+                }
+            }
         }
     }
 }
