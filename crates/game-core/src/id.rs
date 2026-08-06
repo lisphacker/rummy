@@ -20,6 +20,12 @@ macro_rules! uuid_id {
                 Self(uuid::Uuid::new_v4())
             }
         }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
     };
 }
 
