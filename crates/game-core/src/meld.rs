@@ -323,4 +323,19 @@ mod tests {
             ))
         ));
     }
+
+    #[test]
+    fn new_run_requires_at_least_three_cards() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Clubs),
+        ];
+        let result = Meld::new_run(&cards);
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::NotEnoughCardsForMeld
+            ))
+        ));
+    }
 }
