@@ -73,13 +73,17 @@ fn validate_set_cards(cards: &[Card], require_complete: bool) -> GameResult<(Ran
     if non_joker_cards.is_empty() {
         return error(MeldError::MeldMustHaveNonJokerCards);
     }
-    let ranks: HashSet<Rank> = non_joker_cards
+
+    let ranks: Vec<Rank> = non_joker_cards
         .iter()
         .map(|card| match card.face {
             crate::card::CardFace::Standard { rank, .. } => rank,
             crate::card::CardFace::Joker => unreachable!(),
         })
+        .collect::<HashSet<Rank>>()
+        .into_iter()
         .collect();
+
     let suits: HashSet<Suit> = non_joker_cards
         .iter()
         .map(|card| match card.face {
@@ -100,7 +104,7 @@ fn validate_set_cards(cards: &[Card], require_complete: bool) -> GameResult<(Ran
         return error(MeldError::SetHasTooManyJokers);
     }
 
-    Ok((*ranks.iter().next().unwrap(), suits))
+    Ok((ranks[0], suits))
 }
 
 fn validate_run_cards(_cards: &[Card], _require_completee: bool) -> GameResult<(Suit, Rank, Rank)> {
@@ -109,10 +113,10 @@ fn validate_run_cards(_cards: &[Card], _require_completee: bool) -> GameResult<(
 
 fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
     let card_ids: HashSet<CardId> = cards.iter().map(|card| card.id).collect();
-    if card_ids.len() != cards.len() {
-        error(MeldError::NotEnoughCardsForMeld)
-    } else {
+    if card_ids.len() == cards.len() {
         Ok(card_ids.into_iter().collect())
+    } else {
+        error(MeldError::NotEnoughCardsForMeld)
     }
 }
 
