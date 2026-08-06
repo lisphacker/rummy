@@ -245,7 +245,7 @@ fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
 
 #[cfg(test)]
 mod tests {
-    use super::Meld;
+    use super::{Meld, MeldType};
     use crate::{
         card::{Card, CardFace, Rank, Suit},
         errors::GameError,
@@ -454,5 +454,130 @@ mod tests {
         ];
         let result = Meld::new_run(&cards);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn add_extends_a_set_with_a_valid_card() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+            card(Rank::Seven, Suit::Hearts),
+        ];
+        let added_card = card(Rank::Seven, Suit::Spades);
+        let Ok(mut meld) = Meld::new_set(&cards) else {
+            panic!("the initial set should be valid");
+        };
+
+        let result = meld.add(added_card);
+
+        assert!(result.is_ok());
+        assert!(meld.card_ids.contains(&added_card.id));
+        assert!(matches!(
+            meld.meld_type,
+            MeldType::Set { ref suits, .. } if suits.contains(&Suit::Spades)
+        ));
+    }
+
+    #[test]
+    fn add_extends_a_run_with_a_valid_card() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Clubs),
+            card(Rank::Nine, Suit::Clubs),
+        ];
+        let added_card = card(Rank::Ten, Suit::Clubs);
+        let Ok(mut meld) = Meld::new_run(&cards) else {
+            panic!("the initial run should be valid");
+        };
+
+        let result = meld.add(added_card);
+
+        assert!(result.is_ok());
+        assert!(meld.card_ids.contains(&added_card.id));
+        assert!(matches!(
+            meld.meld_type,
+            MeldType::Run {
+                start: Rank::Seven,
+                end: Rank::Ten,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn new_run_rejects_jokers_that_cannot_be_assigned_to_the_run() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Clubs),
+            card(Rank::Nine, Suit::Clubs),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+            joker(),
+        ];
+
+        let result = Meld::new_run(&cards);
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_rejects_using_duplicate_aces_at_both_ends() {
+        let mut cards = vec![card(Rank::Ace, Suit::Clubs), card(Rank::Ace, Suit::Clubs)];
+        cards.extend(
+            [
+                Rank::Two,
+                Rank::Three,
+                Rank::Four,
+                Rank::Five,
+                Rank::Six,
+                Rank::Seven,
+                Rank::Eight,
+                Rank::Nine,
+                Rank::Ten,
+                Rank::Jack,
+                Rank::Queen,
+                Rank::King,
+            ]
+            .map(|rank| card(rank, Suit::Clubs)),
+        );
+
+        let result = Meld::new_run(&cards);
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_meld_preserves_the_submitted_card_order() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+            card(Rank::Seven, Suit::Hearts),
+        ];
+        let expected_ids: Vec<CardId> = cards.iter().map(|card| card.id).collect();
+
+        for _ in 0..32 {
+            let Ok(meld) = Meld::new_set(&cards) else {
+                panic!("the set should be valid");
+            };
+            assert_eq!(meld.card_ids, expected_ids);
+        }
     }
 }
