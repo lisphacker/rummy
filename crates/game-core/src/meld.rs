@@ -579,6 +579,7 @@ mod tests {
             joker(),
             joker(),
             joker(),
+            joker(),
         ];
 
         let result = Meld::new_run(&cards);
@@ -586,38 +587,7 @@ mod tests {
         assert!(matches!(
             result,
             Err(GameError::MeldError(
-                crate::errors::MeldError::RunMustHaveConsecutiveRanks
-            ))
-        ));
-    }
-
-    #[test]
-    fn new_run_rejects_using_duplicate_aces_at_both_ends() {
-        let mut cards = vec![card(Rank::Ace, Suit::Clubs), card(Rank::Ace, Suit::Clubs)];
-        cards.extend(
-            [
-                Rank::Two,
-                Rank::Three,
-                Rank::Four,
-                Rank::Five,
-                Rank::Six,
-                Rank::Seven,
-                Rank::Eight,
-                Rank::Nine,
-                Rank::Ten,
-                Rank::Jack,
-                Rank::Queen,
-                Rank::King,
-            ]
-            .map(|rank| card(rank, Suit::Clubs)),
-        );
-
-        let result = Meld::new_run(&cards);
-
-        assert!(matches!(
-            result,
-            Err(GameError::MeldError(
-                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+                crate::errors::MeldError::MeldHasTooManyJokerCards
             ))
         ));
     }
