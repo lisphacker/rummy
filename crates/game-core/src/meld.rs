@@ -1,3 +1,4 @@
+use core::num;
 use std::collections::HashSet;
 
 use crate::{
@@ -38,6 +39,19 @@ impl Meld {
     }
 
     pub fn add(&mut self, card: Card) -> GameResult<()> {
+        if self.card_ids.contains(&card.id) {
+            return error(MeldError::CardAlreadyInMeld);
+        }
+        let num_joker_cards = self
+            .card_ids
+            .iter()
+            .filter(|&&card_id| {
+                matches!(
+                    card_id,
+                    _ if matches!(card.face, crate::card::CardFace::Joker)
+                )
+            })
+            .count();
         match &mut self.meld_type {
             MeldType::Set { rank, suits } => {
                 match card.face {
@@ -51,13 +65,13 @@ impl Meld {
                         if suits.contains(&suit) {
                             return error(MeldError::SetMustHaveUniqueSuits);
                         }
-                        if suits.len() + 1 > 4 {
+                        if suits.len() + num_joker_cards + 1 > 4 {
                             return error(MeldError::SetCannotHaveMoreThanFourCards);
                         }
                         suits.insert(suit);
                     }
                     crate::card::CardFace::Joker => {
-                        if suits.len() + 1 > 4 {
+                        if suits.len() + num_joker_cards + 1 > 4 {
                             return error(MeldError::SetCannotHaveMoreThanFourCards);
                         }
                     }
