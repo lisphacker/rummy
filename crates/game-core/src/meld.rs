@@ -1,4 +1,3 @@
-use core::num;
 use std::collections::HashSet;
 
 use crate::{
@@ -620,6 +619,140 @@ mod tests {
                 panic!("the set should be valid");
             };
             assert_eq!(meld.card_ids, expected_ids);
+        }
+    }
+
+    #[test]
+    fn add_rejects_wrapping_a_high_ace_run_to_two() {
+        let cards = vec![
+            card(Rank::Queen, Suit::Clubs),
+            card(Rank::King, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+        ];
+        let Ok(mut meld) = Meld::new_run(&cards) else {
+            panic!("the initial high-ace run should be valid");
+        };
+
+        let result = meld.add(card(Rank::Two, Suit::Clubs));
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RunMustHaveConsecutiveRanks
+            ))
+        ));
+    }
+
+    #[test]
+    fn add_rejects_a_fifth_card_when_a_set_contains_jokers() {
+        let cards = vec![card(Rank::Seven, Suit::Clubs), joker(), joker()];
+        let Ok(mut meld) = Meld::new_set(&cards) else {
+            panic!("the initial set should be valid");
+        };
+        assert!(meld.add(card(Rank::Seven, Suit::Diamonds)).is_ok());
+
+        let result = meld.add(card(Rank::Seven, Suit::Hearts));
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::SetCannotHaveMoreThanFourCards
+            ))
+        ));
+    }
+
+    #[test]
+    fn add_rejects_a_card_id_already_in_the_meld() {
+        let duplicate = joker();
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+            duplicate,
+        ];
+        let Ok(mut meld) = Meld::new_set(&cards) else {
+            panic!("the initial set should be valid");
+        };
+
+        let result = meld.add(duplicate);
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::CardAlreadyInMeld
+            ))
+        ));
+        assert_eq!(
+            meld.card_ids
+                .iter()
+                .filter(|&&card_id| card_id == duplicate.id)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn add_extends_a_run_with_a_high_ace() {
+        let cards = vec![
+            card(Rank::Jack, Suit::Clubs),
+            card(Rank::Queen, Suit::Clubs),
+            card(Rank::King, Suit::Clubs),
+        ];
+        let ace = card(Rank::Ace, Suit::Clubs);
+        let Ok(mut meld) = Meld::new_run(&cards) else {
+            panic!("the initial run should be valid");
+        };
+
+        let result = meld.add(ace);
+
+        assert!(result.is_ok());
+        assert!(meld.card_ids.contains(&ace.id));
+        assert!(matches!(
+            meld.meld_type,
+            MeldType::Run {
+                start: Rank::Jack,
+                end: Rank::Ace,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn new_run_accepts_jokers_filling_both_ace_positions() {
+        let mut cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Eight, Suit::Clubs),
+            card(Rank::Nine, Suit::Clubs),
+        ];
+        cards.extend((0..11).map(|_| joker()));
+
+        let result = Meld::new_run(&cards);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn equivalent_sets_have_a_stable_serialized_representation() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+            card(Rank::Seven, Suit::Hearts),
+            card(Rank::Seven, Suit::Spades),
+        ];
+        let Ok(first_meld) = Meld::new_set(&cards) else {
+            panic!("the set should be valid");
+        };
+        let Ok(expected) = serde_json::to_string(&first_meld) else {
+            panic!("the meld should serialize");
+        };
+
+        for _ in 0..64 {
+            let Ok(meld) = Meld::new_set(&cards) else {
+                panic!("the set should be valid");
+            };
+            let Ok(serialized) = serde_json::to_string(&meld) else {
+                panic!("the meld should serialize");
+            };
+            assert_eq!(serialized, expected);
         }
     }
 }
