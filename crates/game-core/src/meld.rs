@@ -101,6 +101,11 @@ impl Meld {
                             self.card_ids.push(card.id);
                             return Ok(());
                         }
+                        if *end == Rank::King && card_rank == Rank::Ace {
+                            *end = Rank::Ace;
+                            self.card_ids.push(card.id);
+                            return Ok(());
+                        }
                         error(MeldError::RunMustHaveConsecutiveRanks)
                     }
                     crate::card::CardFace::Joker => {
