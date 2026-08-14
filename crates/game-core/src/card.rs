@@ -64,14 +64,17 @@ fn usize_to_rank(n: usize) -> Option<Rank> {
     }
 }
 
+#[must_use]
 pub fn incr_rank(rank: Rank, n: usize) -> Option<Rank> {
     usize_to_rank(rank_to_usize(rank) + n)
 }
 
+#[must_use]
 pub fn prev_rank(rank: Rank) -> Option<Rank> {
     usize_to_rank(rank_to_usize(rank).checked_sub(1)?)
 }
 
+#[must_use]
 pub fn next_rank(rank: Rank) -> Option<Rank> {
     usize_to_rank(rank_to_usize(rank) + 1)
 }

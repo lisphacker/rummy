@@ -101,7 +101,7 @@ impl Meld {
                             self.card_ids.push(card.id);
                             return Ok(());
                         }
-                        return error(MeldError::RunMustHaveConsecutiveRanks);
+                        error(MeldError::RunMustHaveConsecutiveRanks)
                     }
                     crate::card::CardFace::Joker => {
                         // Joker can be added to either end of the run
@@ -115,7 +115,7 @@ impl Meld {
                             self.card_ids.push(card.id);
                             return Ok(());
                         }
-                        return error(MeldError::MeldHasTooManyJokerCards);
+                        error(MeldError::MeldHasTooManyJokerCards)
                     }
                 }
             }
@@ -306,7 +306,7 @@ fn validate_run_cards(cards: &[Card], require_complete: bool) -> GameResult<(Sui
 
 fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
     let card_ids: Vec<CardId> = cards.iter().map(|card| card.id).collect();
-    let unique_card_ids: HashSet<CardId> = card_ids.iter().cloned().collect();
+    let unique_card_ids: HashSet<CardId> = card_ids.iter().copied().collect();
     if unique_card_ids.len() == cards.len() {
         Ok(card_ids)
     } else {
