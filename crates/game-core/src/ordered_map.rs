@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct OrderedMap<K, V> {
     map: HashMap<K, V>,
     keys: Vec<K>,
@@ -40,5 +41,22 @@ where
         self.keys
             .iter()
             .filter_map(move |key| self.map.get(key).map(|value| (key, value)))
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.keys.iter()
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for OrderedMap<K, V>
+where
+    K: std::hash::Hash + Eq + Clone,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut ordered_map = OrderedMap::new();
+        for (key, value) in iter {
+            ordered_map.insert(key, value);
+        }
+        ordered_map
     }
 }
