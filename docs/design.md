@@ -9,7 +9,10 @@ This project is an online, turn-based **Rummy** game for **2–8 players**, init
 - **sets**: at least three cards of the same rank;
 - **runs**: at least three consecutive cards of the same suit.
 
-A typical turn draws one or more cards according to the selected rules, optionally creates or extends melds, and ends with a discard. However, deck count, cards dealt, discard-pile pickup, jokers, ace handling, laying off, going out and scoring vary substantially among Rummy variants.
+A typical turn draws one or more cards according to the selected rules and ends
+with a discard. Players may privately organize cards into candidate melds, but
+deck count, cards dealt, discard-pile pickup, ace handling, declaration and
+scoring vary substantially among Rummy variants.
 
 The product therefore has two layers:
 
@@ -37,7 +40,8 @@ The server is authoritative. Clients never receive other players' hidden cards a
 - Typed client/server messages.
 - Serialized room mutation through one actor/task.
 - Event sequence numbers and idempotent command handling.
-- Recoverable active games using snapshots and/or an event log.
+- A persistence boundary that allows durable snapshots and an event log to be
+  added after the initial in-memory implementation.
 - Horizontal scaling later without redesigning the core rules.
 
 ## 3. Non-goals for the first release
@@ -58,126 +62,25 @@ The server is authoritative. Clients never receive other players' hidden cards a
 
 The game engine must not treat one internet rules page as the universal definition of Rummy. A `RulesConfig` selected when creating a room determines all variable behaviour.
 
-The initial profile is named `BasicRummyV1`. The profile is versioned so saved games remain interpretable after future rule changes.
+The initial profile is named `BasicRummyV1`. Its canonical rules are recorded in
+[`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md). The profile is versioned
+so saved games remain interpretable after future rule changes.
 
-### 4.2 Proposed `BasicRummyV1` profile
+### 4.2 `BasicRummyV1` profile
 
-The following is a product definition for this application, informed by common Basic/Straight Rummy rules. It must be shown clearly to players rather than presented as the only possible ruleset.
-
-#### Players and deck
-
-- Minimum players: 2.
-- Maximum players: 8.
-- One standard 52-card deck for 2–3 players.
-- Two standard 52-card decks for 4–8 players.
-- Jokers disabled in the first release.
-- Identical-looking cards from different decks remain distinct physical cards.
-
-The cited Basic Rummy description commonly uses one pack for two or three players and two packs for larger groups up to seven. Supporting eight players with two packs is a deliberate product extension and must be tested for sufficient stock under the selected deal sizes.
-
-#### Cards dealt
-
-Proposed deal sizes:
-
-| Players | Cards each | Decks |
-|---:|---:|---:|
-| 2 | 10 | 1 |
-| 3 | 10 | 1 |
-| 4 | 10 | 2 |
-| 5 | 10 | 2 |
-| 6 | 10 | 2 |
-| 7 | 10 | 2 |
-| 8 | 10 | 2 |
-
-This intentionally provides a consistent ten-card experience. It differs from some Basic Rummy tables that reduce hand size when using one pack. The UI must label this room profile explicitly.
-
-An alternative conservative profile may later reproduce a published deal table exactly.
-
-#### Turn sequence
-
-A turn has these stages:
-
-1. `AwaitingDraw`
-2. `AfterDraw`
-3. zero or more meld/lay-off actions
-4. `AwaitingDiscard`
-5. discard and advance turn
-
-A player may:
-
-- draw the top card from the face-down stock; or
-- draw from the discard pile according to the configured pickup rule;
-- create any number of valid melds after drawing;
-- lay off cards on existing table melds if permitted;
-- discard one card to complete the turn.
-
-#### Melds
-
-- A set contains at least three cards of the same rank.
-- A run contains at least three consecutive ranks of the same suit.
-- Aces may be low (`A-2-3`) or high (`Q-K-A`) but may not wrap (`K-A-2`).
-- A set may not contain two cards of the same suit when using multiple decks, unless a future profile explicitly permits duplicate-suit sets. For `BasicRummyV1`, duplicate suits in one set are rejected.
-- A run may contain only one physical copy of a given rank/suit position.
-- Table melds remain public.
-
-The duplicate-suit rule is a product choice needed when two decks are present; it avoids sets such as two Kings of Hearts plus a King of Clubs.
-
-#### Laying off
-
-- Once a player has created at least one meld in the current or an earlier turn, they may add cards to any valid public meld.
-- A set can be extended up to four suits under `BasicRummyV1`.
-- A run can be extended at either end.
-- A lay-off is atomic: all submitted cards must produce a valid resulting meld.
-
-#### Discard pickup
-
-For the first release:
-
-- A player may take only the top card of the discard pile.
-- The drawn discard becomes part of the player's hand.
-- The player may not immediately discard the exact same physical card on that turn.
-
-A future profile can support taking a buried discard plus all cards above it, possibly requiring immediate use of the selected buried card.
-
-#### Going out
-
-- A player goes out only by discarding their final card.
-- A player cannot end the round solely by placing all remaining cards into melds or lay-offs.
-- The final discard must itself be legal under the normal turn rules.
-
-This removes an ambiguity found across Rummy variants and gives the UI a consistent final action.
-
-#### Stock exhaustion
-
-When the stock becomes empty:
-
-- preserve the top card of the discard pile;
-- move the remaining discard pile into a new stock;
-- shuffle the new stock using secure server-side randomness;
-- continue play;
-- limit recycling to a configurable number to avoid pathological matches.
-
-The first release uses a maximum of two stock recycles. If nobody goes out after that, end the round as blocked and score remaining hands according to the profile.
-
-#### Scoring
-
-When a player goes out:
-
-- numbered cards score face value;
-- J, Q and K score 10;
-- A scores 1;
-- no jokers exist in `BasicRummyV1`;
-- each opponent's unmelded hand value is awarded to the winner;
-- cards already placed in public melds do not count against a player.
-
-A match ends when a player reaches the configured target, initially 100 points. Ties after a blocked round do not end the match unless someone has reached the target; highest total wins, with a shared result if totals remain equal.
+The profile is a deliberate product definition informed by common Basic/Straight
+Rummy rules, not a claim that one universal Rummy ruleset exists. In summary, it
+uses ten-card hands, one or two decks based on player count, no jokers, private
+candidate melds, top-discard-only pickup, atomic complete-hand declarations and
+server-validated scoring declarations. The linked rules document takes
+precedence if a summary elsewhere differs.
 
 ### 4.3 Rules still requiring playtesting
 
 - Ten cards for all 4–8 player games may create long turns or deplete the stock quickly.
-- Whether laying off should be allowed in the same turn as a player's first meld.
-- Whether players should be allowed to rearrange existing table melds.
 - Whether a blocked round should award lowest-hand points rather than no winner.
+- How long opponents have to submit scoring declarations and what deterministic
+  fallback applies if they disconnect or time out.
 - Whether two stock recycles are too many for larger rooms.
 - Turn timer defaults and disconnected-player policy.
 
@@ -225,7 +128,7 @@ The domain crate defines:
 - game and round state;
 - commands;
 - validation and transitions;
-- meld operations;
+- meld validation and declaration validation;
 - scoring;
 - public and player-specific projections where transport-neutral.
 
@@ -276,7 +179,8 @@ The UI owns:
 - accessible alternatives to dragging;
 - local view-model state.
 
-The UI may show a proposed meld before submitting it, but the server decides whether it is valid.
+The UI may organize and preview private candidate melds, but the server decides
+whether a submitted completion or scoring declaration is valid.
 
 ## 7. Authoritative state model
 
@@ -300,7 +204,6 @@ pub struct RoundState {
     pub players: Vec<PlayerRoundState>,
     pub stock: Vec<Card>,
     pub discard: Vec<Card>,
-    pub melds: BTreeMap<MeldId, TableMeld>,
     pub stock_recycles: u8,
     pub pending_draw_restriction: Option<DrawRestriction>,
 }
@@ -313,7 +216,7 @@ For every active round, each configured physical card appears exactly once in on
 - stock;
 - discard pile;
 - a player's hand;
-- a public meld;
+- an accepted declaration retained for round scoring;
 - a temporary command-local selection that has not yet committed;
 - an explicitly modelled removed-card zone, if a future variant uses one.
 
@@ -323,11 +226,15 @@ Selections in the browser do not affect this invariant because they are presenta
 
 Examples:
 
-- `AwaitingDraw`: no meld, lay-off or discard command is accepted.
-- `AfterDraw`: draw is no longer accepted; meld/lay-off/discard may be accepted.
+- `AwaitingDraw`: no discard or completion declaration is accepted.
+- `AfterDraw`: draw is no longer accepted; discard or completion declaration may
+  be accepted.
 - after discard: the next seat becomes active and stage returns to `AwaitingDraw`.
+- after an accepted completion declaration: normal turns stop and the round
+  enters scoring declarations.
 
-Command processing must be atomic. A rejected multi-card meld does not remove any submitted card from the hand.
+Command processing must be atomic. A rejected declaration does not discard a
+card, reveal candidate melds or otherwise mutate the round.
 
 ## 8. Commands
 
@@ -337,9 +244,12 @@ Suggested domain commands:
 pub enum GameCommand {
     DrawFromStock,
     DrawFromDiscardTop,
-    CreateMeld { cards: Vec<CardId> },
-    LayOff { meld_id: MeldId, cards: Vec<CardId> },
     Discard { card: CardId },
+    DeclareComplete { discard: CardId, melds: Vec<Vec<CardId>> },
+    SubmitForScoring {
+        melds: Vec<Vec<CardId>>,
+        unmatched: Vec<CardId>,
+    },
 }
 ```
 
@@ -370,11 +280,14 @@ pub enum DomainEvent {
     RoundStarted { shuffled_deck_commitment: Option<[u8; 32]> },
     CardsDealt { hands: BTreeMap<PlayerId, Vec<Card>> },
     CardDrawn { player: PlayerId, card: Card, source: DrawSource },
-    MeldCreated { player: PlayerId, meld: TableMeld },
-    CardsLaidOff { player: PlayerId, meld_id: MeldId, cards: Vec<Card> },
     CardDiscarded { player: PlayerId, card: Card },
     TurnAdvanced { active_player: PlayerId },
-    PlayerWentOut { player: PlayerId },
+    HandDeclared { player: PlayerId, discard: Card, melds: Vec<Meld> },
+    ScoringHandSubmitted {
+        player: PlayerId,
+        melds: Vec<Meld>,
+        unmatched: Vec<Card>,
+    },
     RoundScored { result: RoundResult },
 }
 ```
@@ -406,13 +319,18 @@ Processing an accepted command:
 4. optionally compare `expected_sequence` with the current sequence;
 5. invoke `game-core`;
 6. assign sequence numbers to emitted events;
-7. persist events and command receipt in one transaction;
+7. record the events and command receipt through the configured room store;
 8. update in-memory room state;
 9. create recipient-specific events/snapshots;
 10. broadcast;
 11. acknowledge the command.
 
-Persistence-before-broadcast prevents clients from observing an event the server cannot recover after a crash. The exact boundary should be benchmarked, but correctness takes priority at card-game traffic levels.
+For the initial implementation, the configured room store is in memory and the
+room actor is the source of truth. A process restart therefore ends active rooms;
+this is an accepted early-stage limitation, not recovery behavior. When durable
+persistence is introduced, step 7 becomes a single database transaction and
+must complete before broadcast, preventing clients from observing an event the
+server cannot recover after a crash.
 
 ## 11. Networking and reconnection
 
@@ -449,7 +367,7 @@ A snapshot includes:
 - player identity and seat;
 - own hand;
 - public hand counts;
-- table melds;
+- accepted declarations revealed during round completion;
 - stock count;
 - discard top and other visible discard information;
 - scores;
@@ -461,11 +379,22 @@ A snapshot includes:
 
 Every mutating client command has a UUID `command_id`. Retrying a command after a connection loss must not apply it twice.
 
-Keep a bounded in-memory cache and durable record for commands relevant to active/recoverable games.
+Initially, keep a bounded in-memory receipt cache for active rooms. Add durable
+command receipts with persistence so retries remain idempotent across server
+restarts.
 
 ## 12. Persistence and recovery
 
-Recommended model: authoritative event log plus periodic snapshots.
+Persistence and crash recovery are target architecture, not requirements for the
+initial playable implementation. Initially, active room state, command receipts,
+and the reconnect event window live only in the owning room actor's memory.
+Reconnection is supported while that process and room actor remain alive, but a
+server restart ends those rooms.
+
+Keep persistence behind server-side room-store/repository boundaries so adding
+PostgreSQL does not affect `game-core`, room command semantics, or client
+protocols. The later durable model is an authoritative event log plus periodic
+snapshots.
 
 ### 12.1 Events
 
@@ -529,6 +458,8 @@ Starting
   ↓
 RoundInProgress
   ↓
+ScoringDeclarations
+  ↓ all hands validated
 RoundScoring
   ↓ target not reached
 BetweenRounds
@@ -569,7 +500,6 @@ The player sees:
 
 - their hand along the bottom;
 - stock and discard pile centrally;
-- public melds in the table area;
 - opponents around the remaining edges with name, score, card count and connection state;
 - active-turn indication;
 - action panel with accessible alternatives to dragging.
@@ -583,9 +513,9 @@ Required interactions:
 - click/tap card to select;
 - Shift-click or range selection on desktop where appropriate;
 - keyboard navigation through hand;
-- “Create meld”, “Lay off”, and “Discard” buttons;
+- private grouping controls plus “Discard” and “Declare complete” buttons;
 - optional drag-and-drop as an enhancement, not the only path;
-- client-side visual preview of candidate melds;
+- client-side organization and visual preview of private candidate melds;
 - server rejection displayed without losing selection unnecessarily.
 
 Allow players to reorder their hand locally. Local order is not authoritative and need not be broadcast.
@@ -596,13 +526,13 @@ Desktop:
 
 - oval/rectangular table;
 - hand spread across bottom;
-- melds use central grid.
+- the player's private candidate melds remain in their hand area.
 
 Mobile portrait:
 
 - opponents in compact header carousel;
 - stock/discard and turn action in upper middle;
-- table melds in vertically scrollable area;
+- private candidate melds in the horizontally scrollable hand area;
 - hand in horizontally scrollable tray;
 - persistent primary-action bar.
 
@@ -722,7 +652,8 @@ Generate random legal command sequences and assert:
 - accepted sequence increases monotonically;
 - rejected commands preserve state;
 - player projections do not leak other hands;
-- scoring never counts table meld cards as unmelded.
+- scoring counts only cards explicitly submitted as unmatched in a validated
+  scoring declaration.
 
 ### 19.3 Simulation tests
 
@@ -755,10 +686,13 @@ One service instance can host:
 
 - HTTP pages/assets;
 - WebSockets;
-- all active room actors;
-- background snapshot tasks.
+- all active room actors.
 
-PostgreSQL is a separate managed or self-hosted service.
+The later persistent deployment also hosts background snapshot tasks.
+
+PostgreSQL is not required by the initial in-memory implementation. Once durable
+persistence is implemented, it runs as a separate managed or self-hosted
+service.
 
 Use a reverse proxy/load balancer that supports WebSocket upgrades and has an idle timeout longer than the heartbeat interval.
 
@@ -780,8 +714,8 @@ Redis is not required initially. It may later provide distributed presence, regi
 - cards/decks and `BasicRummyV1`;
 - 2–8 player state model;
 - deterministic dealing;
-- draw, meld, lay off and discard;
-- going out and scoring;
+- draw, discard, complete-hand declarations and scoring submissions;
+- declaration validation and scoring;
 - unit/property/simulation tests.
 
 ### Phase 2: two-player vertical slice
@@ -801,7 +735,8 @@ Redis is not required initially. It may later provide distributed presence, regi
 - multi-round matches;
 - host migration;
 - disconnect grace policy;
-- persistence/recovery.
+- in-process reconnect and snapshot resynchronization;
+- document that active rooms do not survive a server restart.
 
 ### Phase 4: product quality
 
@@ -812,7 +747,14 @@ Redis is not required initially. It may later provide distributed presence, regi
 - metrics and moderation;
 - load testing.
 
-### Phase 5: extensions
+### Phase 5: persistence and recovery
+
+- PostgreSQL-backed canonical event log and command receipts;
+- periodic protected snapshots;
+- restart recovery and validation;
+- persistence-before-broadcast transactions.
+
+### Phase 6: extensions
 
 - additional rules profiles;
 - bots;
@@ -849,14 +791,14 @@ Saved games refer to a named, versioned rules profile. Behaviour changes create 
 
 ### ADR-007: Event log with snapshots
 
-Accepted events are persisted before broadcast, with periodic snapshots for efficient recovery.
+The initial implementation keeps active rooms and command receipts in memory, so
+rooms do not survive a process restart. Durable persistence is a later milestone:
+accepted events will then be persisted before broadcast, with periodic snapshots
+for efficient recovery.
 
 ## 23. Open questions
 
-- Confirm the final public name of `BasicRummyV1` and how prominently to describe house rules.
 - Retain ten-card hands for 6–8 players or reduce them after simulation/playtesting?
-- Allow laying off in the same turn as the first meld?
-- Permit rearranging existing melds in any future profile?
 - What result should a blocked round produce?
 - Are anonymous guest rooms sufficient for launch, or are accounts required?
 - Should room owners be able to replace disconnected players with bots?

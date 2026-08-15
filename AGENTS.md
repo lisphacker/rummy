@@ -23,7 +23,8 @@ Read these documents before making non-trivial changes:
 ## Primary engineering principles
 
 1. **Server authoritative**
-   - Clients send player intentions such as `DrawFromStock`, `CreateMeld`, and `Discard`.
+   - Clients send player intentions such as `DrawFromStock`, `Discard`, and
+     `DeclareComplete`.
    - Clients must never send replacement game state.
    - Never trust client-provided card ownership, turn status, score, timestamps, or room membership.
 
@@ -103,7 +104,7 @@ Owns:
 - rules configuration;
 - stock and discard pile behaviour;
 - meld validation;
-- lay-off validation;
+- declaration validation;
 - going-out rules;
 - scoring;
 - deterministic commands, transitions and domain events;
@@ -167,13 +168,19 @@ Owns reusable builders, deterministic test decks, seeded RNG helpers, fixtures a
 
 ## Domain rules and invariants
 
+The canonical initial-profile rules are in
+[`docs/rules/BasicRummyV1.md`](docs/rules/BasicRummyV1.md). Read that file before
+implementing or changing `BasicRummyV1` behavior.
+
 Unless overridden by a selected rules profile:
 
 - A meld is a **set** of at least three cards of the same rank or a **run** of at least three consecutive cards of the same suit.
-- A turn normally consists of drawing, optionally melding/laying off, and discarding.
+- A turn normally consists of drawing and discarding or making the profile's
+  atomic completion declaration.
 - Only the active player may issue game actions.
 - The same physical card cannot appear in more than one location.
-- The union of hands, stock, discard pile, table melds and removed cards must equal the generated deck multiset.
+- The union of hands, stock, discard pile, accepted declaration zones and removed
+  cards must equal the generated deck multiset.
 - A command must be atomic: either the complete command succeeds or state remains unchanged.
 - A player-specific view must not reveal another player's card identities.
 
@@ -185,8 +192,8 @@ Because rules vary, do not assume the following without reading `RulesConfig`:
 - whether ace is low, high, or configurable;
 - whether the entire discard pile can be taken;
 - whether taking a buried discard forces use of that card;
-- whether laying off is allowed immediately or only after an initial meld;
-- whether a final discard is required to go out;
+- whether melds are private drafts or public table melds;
+- how a complete hand is declared and validated;
 - scoring values and match target.
 
 ## Commands and events
@@ -197,10 +204,12 @@ Prefer intention-oriented commands:
 pub enum GameCommand {
     Draw { source: DrawSource },
     DrawFromDiscardDepth { depth: usize },
-    CreateMeld { cards: Vec<CardId> },
-    LayOff { meld_id: MeldId, cards: Vec<CardId> },
     Discard { card: CardId },
-    GoOut,
+    DeclareComplete { discard: CardId, melds: Vec<Vec<CardId>> },
+    SubmitForScoring {
+        melds: Vec<Vec<CardId>>,
+        unmatched: Vec<CardId>,
+    },
 }
 ```
 
@@ -211,11 +220,10 @@ Events should describe accepted facts:
 ```rust
 pub enum GameEvent {
     CardDrawn { player: PlayerId, source: PublicDrawSource },
-    MeldCreated { player: PlayerId, meld: Meld },
-    CardsLaidOff { player: PlayerId, meld_id: MeldId, cards: Vec<Card> },
     CardDiscarded { player: PlayerId, card: Card },
     TurnAdvanced { player: PlayerId },
-    PlayerWentOut { player: PlayerId },
+    HandDeclared { player: PlayerId, discard: Card, melds: Vec<Meld> },
+    ScoringHandSubmitted { player: PlayerId },
     RoundScored { result: RoundResult },
 }
 ```
@@ -234,9 +242,8 @@ Cover:
 - duplicate physical-card rejection;
 - ace boundary behaviour;
 - jokers/wildcards when enabled;
-- laying off on sets and both ends of runs;
 - draw/discard turn-stage enforcement;
-- legal and illegal going out;
+- legal and illegal completion/scoring declarations;
 - stock exhaustion/recycling;
 - scoring;
 - player-view secrecy.

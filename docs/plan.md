@@ -11,7 +11,8 @@ For the initial implementation:
 - rooms, guest identities, command receipts, event history, and reconnect data are held in memory;
 - a process restart may discard all rooms and matches;
 - PostgreSQL, Redis, durable recovery, and multi-instance routing are explicitly deferred to Phase 7;
-- `BasicRummyV1` is the only rules profile required before the first playable prototype;
+- [`BasicRummyV1`](rules/BasicRummyV1.md) is the only rules profile required
+  before the first playable prototype;
 - the browser remains untrusted, even while all server state is in memory.
 
 Every phase ends with an acceptance gate. A phase is complete only when its listed behavior is implemented and its gate passes.
@@ -28,10 +29,12 @@ Goal: establish a trustworthy, documented baseline on which the rules engine can
 
 ### Steps
 
-1. Reconcile `docs/design.md` with the near-term scope.
+1. Reconcile `docs/design.md` with the near-term scope and record the canonical
+   rules in [`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md).
    - Record that persistence/recovery references describe the later target architecture, not the initial implementation.
-   - Confirm the `BasicRummyV1` decisions needed by the engine: ace-low/ace-high behavior, no jokers, ten-card hands, top-discard-only pickup, final discard required, and two stock recycles.
-   - Add a short decision for laying off after the first meld; if product input is unavailable, use the design's current proposed behavior and keep it configurable.
+   - Confirm ace-low/ace-high behavior, no jokers, ten-card hands,
+     top-discard-only pickup, private candidate melds, complete-hand declarations
+     and two stock recycles.
 
 2. Make the existing meld implementation deterministic and profile-driven.
    - Fix ace boundary handling and prevent `K-A-2` wrapping.
@@ -61,7 +64,8 @@ Goal: play and score complete rounds without networking, async code, UI code, or
 
 1. Define explicit rules and domain state.
    - Implement `RulesConfig` plus a versioned `BasicRummyV1` constructor.
-   - Define game/round phases, seats, active player, turn stage, hands, stock, discard pile, table melds, recycle count, and match scores.
+   - Define game/round phases, seats, active player, turn stage, hands, stock,
+     discard pile, accepted declarations, recycle count, and match scores.
    - Validate 2–8 distinct seated players and generate the correct physical-card multiset for one or two decks.
 
 2. Implement deterministic round setup.
@@ -70,27 +74,33 @@ Goal: play and score complete rounds without networking, async code, UI code, or
    - Reject malformed supplied decks before mutating state.
 
 3. Define intention-oriented commands, errors, events, and atomic transitions.
-   - Implement draw from stock, draw from discard top, create meld, lay off, and discard.
-   - Validate actor, active turn, turn stage, ownership, card identity, selected meld, and discard restrictions.
+   - Implement draw from stock, draw from discard top, normal discard, atomic
+     complete-hand declaration, and opponent scoring submissions.
+   - Validate actor, active turn or scoring phase, ownership, card identity, meld
+     partitions, full hand accounting, and discard restrictions.
    - Return the next state and accepted domain events; a rejected command must leave the input state unchanged.
 
 4. Implement stock exhaustion and round termination.
    - Preserve the discard top, recycle and reshuffle the remaining discard pile using supplied randomness, and enforce the configured recycle limit.
-   - Require a final discard to go out.
+   - Require a legal discard as part of an atomic complete-hand declaration.
    - End and score a blocked round according to the documented Basic profile.
 
 5. Implement scoring and multi-round match state.
    - Score A as 1, numbered cards at face value, and face cards as 10.
-   - Award unmelded opponent points to the player who goes out.
+   - Award validated unmatched-card points to the player whose complete-hand
+     declaration was accepted.
    - Rotate dealer/start positions and end the match at the configured target.
 
 6. Implement recipient-specific projections.
    - Create separate authoritative, player, and public/spectator-safe types.
-   - Include a player's own hand, opponents' hand counts, public melds, stock count, discard information, scores, active player, and turn stage.
+   - Include a player's own hand, opponents' hand counts, accepted declarations
+     when revealed, stock count, discard information, scores, active player, and
+     turn stage.
    - Ensure neither serialization nor debug-facing projection data contains another player's hand or stock order.
 
 7. Add broad rules verification.
-   - Unit-test every command in every valid/invalid turn stage and all rules listed in `docs/design.md` section 19.1.
+   - Unit-test every command in every valid/invalid turn stage and all rules in
+     [`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md).
    - Add property tests for card conservation, unique card location, rejected-command immutability, legal active seat, deck multiset correctness, and view secrecy.
    - Add deterministic bot/simulation tests that complete many two-player rounds and detect deadlocks or non-termination.
 
@@ -166,8 +176,10 @@ Goal: two people can complete a full `BasicRummyV1` round in separate browsers w
    - Reconcile all optimistic selection/animation state with authoritative sequence updates.
 
 3. Build the playable table.
-   - Render the player's hand, opponent card count, stock count, discard top, public melds, active player, stage, and scores.
-   - Support stock/discard draw, multi-card selection, create meld, lay off, and discard.
+   - Render the player's hand, private candidate groups, opponent card count,
+     stock count, discard top, active player, stage, and scores.
+   - Support stock/discard draw, private grouping, normal discard, complete-hand
+     declaration, and scoring submission.
    - Disable clearly unavailable controls while still relying on server validation.
 
 4. Meet minimum responsive and accessible interaction requirements.
@@ -181,7 +193,9 @@ Goal: two people can complete a full `BasicRummyV1` round in separate browsers w
    - Surface the `BasicRummyV1` house rules used by the prototype.
 
 6. Add end-to-end coverage.
-   - Drive two independent browser contexts through create, join, ready, start, draw, meld/lay-off where the fixed deck permits, discard, reconnect, and round completion.
+   - Drive two independent browser contexts through create, join, ready, start,
+     draw, private grouping, discard, declaration, scoring submission, reconnect,
+     and round completion.
    - Use a deterministic test-only deck hook that cannot be selected by production clients.
    - Test an attempted out-of-turn move and verify the UI recovers from the server rejection.
 

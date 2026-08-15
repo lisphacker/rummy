@@ -572,8 +572,7 @@ pub struct RulesConfig {
     pub minimum_meld_size: u8,
     pub ace_policy: AcePolicy,
     pub discard_pickup: DiscardPickupRule,
-    pub lay_off: LayOffRule,
-    pub going_out: GoingOutRule,
+    pub declaration: DeclarationRule,
     pub stock_recycle: StockRecycleRule,
     pub scoring: ScoringRules,
 }
@@ -590,7 +589,10 @@ impl RulesConfig {
 }
 ```
 
-The project supports 2–8 seats, but the exact Basic Rummy deal/deck policy for 8 players is a product decision and must be documented in `docs/design.md` and tested. Avoid claiming one universal Rummy rule.
+The project supports 2–8 seats. The canonical deal, declaration and scoring
+behavior for the initial profile is defined in
+[`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md) and must be tested. Avoid
+claiming one universal Rummy rule.
 
 ## 9. Command-processing skeleton
 
@@ -607,10 +609,13 @@ pub fn apply_command(
 
     match command {
         GameCommand::Draw { source } => draw(state, actor, source),
-        GameCommand::CreateMeld { cards } => create_meld(state, actor, cards),
-        GameCommand::LayOff { meld_id, cards } => lay_off(state, actor, meld_id, cards),
         GameCommand::Discard { card } => discard(state, actor, card),
-        GameCommand::GoOut => go_out(state, actor),
+        GameCommand::DeclareComplete { discard, melds } => {
+            declare_complete(state, actor, discard, melds)
+        }
+        GameCommand::SubmitForScoring { melds, unmatched } => {
+            submit_for_scoring(state, actor, melds, unmatched)
+        }
     }
 }
 ```
@@ -776,7 +781,7 @@ Then add:
 
 - creating melds;
 - laying off;
-- going out and scoring;
+- complete-hand declaration and scoring submissions;
 - 3–8 player layouts;
 - timers and disconnect policy;
 - bots for local testing;
