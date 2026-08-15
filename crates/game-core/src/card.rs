@@ -1,3 +1,5 @@
+use std::path::Iter;
+
 use crate::id::CardId;
 
 #[derive(
@@ -8,6 +10,14 @@ pub enum Suit {
     Diamonds,
     Hearts,
     Spades,
+}
+
+impl Suit {
+    pub const ALL: [Self; 4] = [Self::Clubs, Self::Diamonds, Self::Hearts, Self::Spades];
+
+    pub fn iter() -> impl ExactSizeIterator<Item = Self> {
+        Self::ALL.into_iter()
+    }
 }
 
 #[derive(
@@ -27,6 +37,28 @@ pub enum Rank {
     Jack,
     Queen,
     King,
+}
+
+impl Rank {
+    pub const ALL: [Self; 13] = [
+        Self::Ace,
+        Self::Two,
+        Self::Three,
+        Self::Four,
+        Self::Five,
+        Self::Six,
+        Self::Seven,
+        Self::Eight,
+        Self::Nine,
+        Self::Ten,
+        Self::Jack,
+        Self::Queen,
+        Self::King,
+    ];
+
+    pub fn iter() -> impl ExactSizeIterator<Item = Self> {
+        Self::ALL.into_iter()
+    }
 }
 
 fn rank_to_usize(rank: Rank) -> usize {
@@ -91,4 +123,22 @@ pub enum CardFace {
 pub struct Card {
     pub id: CardId,
     pub face: CardFace,
+}
+
+impl Card {
+    pub fn new(suit: Suit, rank: Rank) -> Self {
+        let id = CardId::new();
+        Self {
+            id,
+            face: CardFace::Standard { rank, suit },
+        }
+    }
+
+    pub fn new_joker() -> Self {
+        let id = CardId::new();
+        Self {
+            id,
+            face: CardFace::Joker,
+        }
+    }
 }
