@@ -2,12 +2,12 @@
 
 /// Rules that affect meld construction and extension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct MeldRulesConfig {
+pub struct GameConfig {
     minimum_meld_size: usize,
     allow_jokers: bool,
 }
 
-impl MeldRulesConfig {
+impl GameConfig {
     /// Returns the meld rules for the canonical `BasicRummyV1` profile.
     #[must_use]
     pub const fn basic_rummy_v1() -> Self {
@@ -46,7 +46,7 @@ impl MeldRulesConfig {
     }
 }
 
-impl Default for MeldRulesConfig {
+impl Default for GameConfig {
     fn default() -> Self {
         Self::basic_rummy_v1()
     }

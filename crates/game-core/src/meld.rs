@@ -2,7 +2,7 @@ use crate::{
     card::{Card, Rank, Suit, incr_rank, next_rank, prev_rank},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
-    rules::config::MeldRulesConfig,
+    rules::config::GameConfig,
 };
 use std::collections::BTreeSet;
 use std::collections::HashSet;
@@ -26,7 +26,7 @@ pub struct Meld {
 }
 
 impl Meld {
-    pub fn new_set(cards: &[Card], rules: &MeldRulesConfig) -> GameResult<Self> {
+    pub fn new_set(cards: &[Card], rules: &GameConfig) -> GameResult<Self> {
         let (rank, suits, num_joker_cards) = validate_set_cards(cards, rules, true)?;
         let card_ids = validate_unique_card_ids(cards)?;
         Ok(Self {
@@ -36,7 +36,7 @@ impl Meld {
         })
     }
 
-    pub fn new_run(cards: &[Card], rules: &MeldRulesConfig) -> GameResult<Self> {
+    pub fn new_run(cards: &[Card], rules: &GameConfig) -> GameResult<Self> {
         let (suit, start, end, num_joker_cards) = validate_run_cards(cards, rules, true)?;
         let card_ids = validate_unique_card_ids(cards)?;
         Ok(Self {
@@ -53,7 +53,7 @@ fn error<T>(e: MeldError) -> GameResult<T> {
 
 fn validate_set_cards(
     cards: &[Card],
-    rules: &MeldRulesConfig,
+    rules: &GameConfig,
     require_complete: bool,
 ) -> GameResult<(Rank, BTreeSet<Suit>, usize)> {
     if require_complete && cards.len() < rules.minimum_meld_size() {
@@ -110,7 +110,7 @@ fn validate_set_cards(
 
 fn validate_run_cards(
     cards: &[Card],
-    rules: &MeldRulesConfig,
+    rules: &GameConfig,
     require_complete: bool,
 ) -> GameResult<(Suit, Rank, Rank, usize)> {
     if require_complete && cards.len() < rules.minimum_meld_size() {
@@ -268,11 +268,11 @@ mod tests {
         card::{Card, CardFace, Rank, Suit},
         errors::GameError,
         id::CardId,
-        rules::config::MeldRulesConfig,
+        rules::config::GameConfig,
     };
 
-    fn rules() -> MeldRulesConfig {
-        MeldRulesConfig::new(3, true)
+    fn rules() -> GameConfig {
+        GameConfig::new(3, true)
     }
 
     fn card(rank: Rank, suit: Suit) -> Card {
@@ -324,7 +324,7 @@ mod tests {
             joker(),
         ];
 
-        let result = Meld::new_set(&cards, &MeldRulesConfig::basic_rummy_v1());
+        let result = Meld::new_set(&cards, &GameConfig::basic_rummy_v1());
 
         assert!(matches!(
             result,
@@ -407,7 +407,7 @@ mod tests {
             card(Rank::Three, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
 
         assert!(result.is_ok());
     }
@@ -420,7 +420,7 @@ mod tests {
             card(Rank::Ace, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
 
         assert!(result.is_ok());
     }
@@ -517,7 +517,7 @@ mod tests {
             card(Rank::Two, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
 
         assert!(matches!(
             result,
@@ -609,7 +609,7 @@ mod tests {
             card(Rank::Seven, Suit::Hearts),
         ];
 
-        let result = Meld::new_set(&cards, &MeldRulesConfig::basic_rummy_v1());
+        let result = Meld::new_set(&cards, &GameConfig::basic_rummy_v1());
 
         assert!(result.is_err());
     }
