@@ -22,16 +22,16 @@ impl GameState {
         }
     }
 
-    pub fn initialize_deck(&mut self, num_decks: usize, game_config: GameConfig) {
+    pub fn initialize_deck(&mut self, game_config: GameConfig) {
         let mut cards = Vec::new();
-        for _ in 0..num_decks {
+        for _ in 0..game_config.deck_count() {
             for suit in Suit::iter() {
                 for rank in Rank::iter() {
                     let card = Card::new(suit, rank);
                     cards.push(card);
                 }
             }
-            if game_config.allow_jokers() {
+            for _ in 0..game_config.jokers_per_deck() {
                 cards.push(Card::new_joker());
             }
         }

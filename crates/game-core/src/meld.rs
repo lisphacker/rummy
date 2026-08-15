@@ -272,7 +272,14 @@ mod tests {
     };
 
     fn rules() -> GameConfig {
-        GameConfig::new(3, true)
+        GameConfig::basic_rummy_v1_with_jokers_for_testing()
+    }
+
+    fn basic_rules() -> GameConfig {
+        let Ok(config) = GameConfig::basic_rummy_v1(2) else {
+            panic!("two players must be supported");
+        };
+        config
     }
 
     fn card(rank: Rank, suit: Suit) -> Card {
@@ -324,7 +331,7 @@ mod tests {
             joker(),
         ];
 
-        let result = Meld::new_set(&cards, &GameConfig::basic_rummy_v1());
+        let result = Meld::new_set(&cards, &basic_rules());
 
         assert!(matches!(
             result,
@@ -407,7 +414,7 @@ mod tests {
             card(Rank::Three, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &basic_rules());
 
         assert!(result.is_ok());
     }
@@ -420,7 +427,7 @@ mod tests {
             card(Rank::Ace, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &basic_rules());
 
         assert!(result.is_ok());
     }
@@ -517,7 +524,7 @@ mod tests {
             card(Rank::Two, Suit::Clubs),
         ];
 
-        let result = Meld::new_run(&cards, &GameConfig::basic_rummy_v1());
+        let result = Meld::new_run(&cards, &basic_rules());
 
         assert!(matches!(
             result,
@@ -609,7 +616,7 @@ mod tests {
             card(Rank::Seven, Suit::Hearts),
         ];
 
-        let result = Meld::new_set(&cards, &GameConfig::basic_rummy_v1());
+        let result = Meld::new_set(&cards, &basic_rules());
 
         assert!(result.is_err());
     }
