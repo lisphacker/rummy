@@ -25,28 +25,30 @@ At the time this plan was written, `cargo test --workspace --all-features` ran 2
 
 ## Phase 0 — Stabilize the foundation
 
+- [ ] **Phase complete**
+
 Goal: establish a trustworthy, documented baseline on which the rules engine can be built.
 
 ### Steps
 
-1. Reconcile `docs/design.md` with the near-term scope and record the canonical
+- [x] 1. Reconcile `docs/design.md` with the near-term scope and record the canonical
    rules in [`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md).
    - Record that persistence/recovery references describe the later target architecture, not the initial implementation.
    - Confirm ace-low/ace-high behavior, no jokers, ten-card hands,
      top-discard-only pickup, private candidate melds, complete-hand declarations
      and two stock recycles.
 
-2. Make the existing meld implementation deterministic and profile-driven.
+- [ ] 2. Make the existing meld implementation deterministic and profile-driven.
    - Fix ace boundary handling and prevent `K-A-2` wrapping.
    - Replace unordered serialized collections with deterministic representations where they enter equality, snapshots, or protocol data.
    - Either correctly support joker validation behind configuration or explicitly reject jokers in `BasicRummyV1`; do not leave contradictory behavior.
    - Expose read-only meld data needed by transitions and views without allowing callers to violate invariants.
 
-3. Establish reusable deterministic test fixtures in `test-support`.
+- [ ] 3. Establish reusable deterministic test fixtures in `test-support`.
    - Add fixed card/card-ID builders, ordered decks, player builders, and seeded shuffle helpers.
    - Ensure fixtures do not depend on wall-clock time or random UUID values when assertions require stable output.
 
-4. Make the workspace quality commands reliable.
+- [ ] 4. Make the workspace quality commands reliable.
    - Resolve all existing test failures.
    - Address warnings owned by this workspace; separately record unavoidable upstream future-incompatibility warnings.
 
@@ -58,47 +60,49 @@ Goal: establish a trustworthy, documented baseline on which the rules engine can
 
 ## Phase 1 — Complete the deterministic `BasicRummyV1` engine
 
+- [ ] **Phase complete**
+
 Goal: play and score complete rounds without networking, async code, UI code, or persistence.
 
 ### Steps
 
-1. Define explicit rules and domain state.
+- [ ] 1. Define explicit rules and domain state.
    - Implement `RulesConfig` plus a versioned `BasicRummyV1` constructor.
    - Define game/round phases, seats, active player, turn stage, hands, stock,
      discard pile, accepted declarations, recycle count, and match scores.
    - Validate 2–8 distinct seated players and generate the correct physical-card multiset for one or two decks.
 
-2. Implement deterministic round setup.
+- [ ] 2. Implement deterministic round setup.
    - Accept an already shuffled deck (or injected RNG) at the domain boundary.
    - Deal ten cards per player, establish dealer/active seat, seed the discard pile, and retain the remaining stock.
    - Reject malformed supplied decks before mutating state.
 
-3. Define intention-oriented commands, errors, events, and atomic transitions.
+- [ ] 3. Define intention-oriented commands, errors, events, and atomic transitions.
    - Implement draw from stock, draw from discard top, normal discard, atomic
      complete-hand declaration, and opponent scoring submissions.
    - Validate actor, active turn or scoring phase, ownership, card identity, meld
      partitions, full hand accounting, and discard restrictions.
    - Return the next state and accepted domain events; a rejected command must leave the input state unchanged.
 
-4. Implement stock exhaustion and round termination.
+- [ ] 4. Implement stock exhaustion and round termination.
    - Preserve the discard top, recycle and reshuffle the remaining discard pile using supplied randomness, and enforce the configured recycle limit.
    - Require a legal discard as part of an atomic complete-hand declaration.
    - End and score a blocked round according to the documented Basic profile.
 
-5. Implement scoring and multi-round match state.
+- [ ] 5. Implement scoring and multi-round match state.
    - Score A as 1, numbered cards at face value, and face cards as 10.
    - Award validated unmatched-card points to the player whose complete-hand
      declaration was accepted.
    - Rotate dealer/start positions and end the match at the configured target.
 
-6. Implement recipient-specific projections.
+- [ ] 6. Implement recipient-specific projections.
    - Create separate authoritative, player, and public/spectator-safe types.
    - Include a player's own hand, opponents' hand counts, accepted declarations
      when revealed, stock count, discard information, scores, active player, and
      turn stage.
    - Ensure neither serialization nor debug-facing projection data contains another player's hand or stock order.
 
-7. Add broad rules verification.
+- [ ] 7. Add broad rules verification.
    - Unit-test every command in every valid/invalid turn stage and all rules in
      [`docs/rules/BasicRummyV1.md`](rules/BasicRummyV1.md).
    - Add property tests for card conservation, unique card location, rejected-command immutability, legal active seat, deck multiset correctness, and view secrecy.
@@ -113,42 +117,44 @@ Goal: play and score complete rounds without networking, async code, UI code, or
 
 ## Phase 2 — Build the in-memory authoritative server slice
 
+- [ ] **Phase complete**
+
 Goal: expose the engine safely through one single-process server before investing in the full game UI.
 
 ### Steps
 
-1. Define a versioned protocol.
+- [ ] 1. Define a versioned protocol.
    - Add stable tagged client messages for create room, join room, ready/start, game intentions, heartbeat, and resume.
    - Add command IDs, expected room sequence, acknowledgements, public errors, recipient-filtered events, and player snapshots.
    - Reject unsupported protocol versions and malformed messages without affecting room state.
 
-2. Implement temporary guest identity and room membership.
+- [ ] 2. Implement temporary guest identity and room membership.
    - Issue opaque guest/session identifiers and reconnect credentials appropriate for the prototype.
    - Treat room codes only as discovery, never authorization.
    - Authorize every start/game/resume command against the server-owned seat.
 
-3. Implement an in-memory room registry.
+- [ ] 3. Implement an in-memory room registry.
    - Create collision-resistant room IDs/codes and channel handles.
    - Store handles in process memory while keeping mutable game state inside the owning actor.
    - Remove abandoned/completed rooms with an explicit lifecycle policy.
 
-4. Implement one actor per room.
+- [ ] 4. Implement one actor per room.
    - Serialize join, ready, start, game, disconnect, reconnect, and shutdown inputs through one Tokio channel.
    - Keep player seats, canonical game state, monotonically increasing room sequence, and a bounded command-receipt cache inside the actor.
    - Make duplicate command IDs idempotent and reject stale expected sequences with a recoverable response.
 
-5. Implement secure server-side setup and recipient filtering.
+- [ ] 5. Implement secure server-side setup and recipient filtering.
    - Shuffle with OS-seeded server randomness in production and injected/fixed randomness in tests.
    - Convert authoritative transitions to a separate message for each connected recipient.
    - Never send or log another player's hand, the stock order, session credentials, or full canonical events.
 
-6. Implement HTTP/WebSocket lifecycle.
+- [ ] 6. Implement HTTP/WebSocket lifecycle.
    - Start Axum/Dioxus on configured addresses with tracing and graceful shutdown.
    - Add room creation/join endpoints as appropriate and an authenticated WebSocket upgrade with origin and message-size checks.
    - Route parsed messages to room handles; bound queues and rate/message frequency at the connection edge.
    - Add heartbeat/connection cleanup without using timing sleeps in deterministic room tests.
 
-7. Implement in-memory reconnection.
+- [ ] 7. Implement in-memory reconnection.
    - Retain seat ownership and a bounded recipient-safe event window after disconnect.
    - Resume from missing events when possible; otherwise send a fresh player-specific snapshot.
    - Define newest-connection-wins behavior for two controlling connections.
@@ -162,37 +168,40 @@ Goal: expose the engine safely through one single-process server before investin
 
 ## Phase 3 — Deliver the initial two-player prototype
 
+- [ ] **Phase complete**
+
 Goal: two people can complete a full `BasicRummyV1` round in separate browsers with clear, accessible controls. Completion of this phase is the concrete initial two-player prototype milestone.
 
 ### Steps
 
-1. Build the create/join flow.
+- [ ] 1. Build the create/join flow.
    - Implement the home/lobby routes, guest display-name handling, room-code/link sharing, two visible seats, ready state, and host start control.
    - Present server errors and retry paths without inventing local room authority.
 
-2. Build recipient-filtered client state and WebSocket handling.
+- [ ] 2. Build recipient-filtered client state and WebSocket handling.
    - Reduce server snapshots/events into a client view model.
    - Track connecting, connected, reconnecting, and disconnected states.
    - Reconcile all optimistic selection/animation state with authoritative sequence updates.
 
-3. Build the playable table.
+- [ ] 3. Build the playable table.
    - Render the player's hand, private candidate groups, opponent card count,
      stock count, discard top, active player, stage, and scores.
    - Support stock/discard draw, private grouping, normal discard, complete-hand
      declaration, and scoring submission.
    - Disable clearly unavailable controls while still relying on server validation.
 
-4. Meet minimum responsive and accessible interaction requirements.
+- [ ] 4. Meet minimum responsive and accessible interaction requirements.
    - Support mouse, touch, and full keyboard play without requiring drag-and-drop.
    - Give every card an accessible rank/suit name, do not convey suit by color alone, and provide visible focus styles.
    - Add live feedback for accepted/rejected actions and connection changes; respect reduced-motion preferences.
    - Verify desktop and mobile portrait layouts at representative viewport sizes.
 
-5. Make round completion understandable.
-   - Show who went out, points awarded, current match score, and a clear return/rematch path.
+- [ ] 5. Make round completion understandable.
+   - Show whose complete-hand declaration was accepted, points awarded, current
+     match score, and a clear return/rematch path.
    - Surface the `BasicRummyV1` house rules used by the prototype.
 
-6. Add end-to-end coverage.
+- [ ] 6. Add end-to-end coverage.
    - Drive two independent browser contexts through create, join, ready, start,
      draw, private grouping, discard, declaration, scoring submission, reconnect,
      and round completion.
@@ -210,16 +219,18 @@ Goal: two people can complete a full `BasicRummyV1` round in separate browsers w
 
 ## Phase 4 — Harden the in-memory game and match experience
 
+- [ ] **Phase complete**
+
 Goal: turn the prototype into a robust single-process two-player experience before expanding player counts.
 
 ### Steps
 
-1. Complete multi-round match flow to the target score, including dealer rotation, between-round readiness, rematch, and match-complete screens.
-2. Define and implement disconnect grace behavior, host departure/host migration, room cleanup, and safe behavior when a player abandons an active match.
-3. Harden command idempotency, bounded event retention, queue backpressure, oversized/malformed payload handling, rate limiting, origin checks, and reconnect-token rotation/revocation.
-4. Add structured tracing and low-cardinality metrics for room count, connections, reconnects, command rejection categories, mailbox depth, and command latency without hidden data.
-5. Add failure-path tests for disconnect-before-ack, duplicate connections, queue saturation, malformed frames, and shutdown with active rooms.
-6. Load-test expected concurrent single-process room counts and record capacity assumptions and operational limits.
+- [ ] 1. Complete multi-round match flow to the target score, including dealer rotation, between-round readiness, rematch, and match-complete screens.
+- [ ] 2. Define and implement disconnect grace behavior, host departure/host migration, room cleanup, and safe behavior when a player abandons an active match.
+- [ ] 3. Harden command idempotency, bounded event retention, queue backpressure, oversized/malformed payload handling, rate limiting, origin checks, and reconnect-token rotation/revocation.
+- [ ] 4. Add structured tracing and low-cardinality metrics for room count, connections, reconnects, command rejection categories, mailbox depth, and command latency without hidden data.
+- [ ] 5. Add failure-path tests for disconnect-before-ack, duplicate connections, queue saturation, malformed frames, and shutdown with active rooms.
+- [ ] 6. Load-test expected concurrent single-process room counts and record capacity assumptions and operational limits.
 
 ### Acceptance gate
 
@@ -230,15 +241,17 @@ Goal: turn the prototype into a robust single-process two-player experience befo
 
 ## Phase 5 — Expand from two players to 3–8 players
 
+- [ ] **Phase complete**
+
 Goal: support the full advertised player-count range without weakening rules, secrecy, or usability.
 
 ### Steps
 
-1. Generalize lobby seats, readiness, start constraints, turn rotation, dealer rotation, and host migration for 3–8 occupied seats.
-2. Verify one-deck behavior for 2–3 players and two-deck physical card identities for 4–8 players, including duplicate-suit set rejection.
-3. Add responsive opponent layouts, including a compact carousel/strip on narrow screens, while retaining readable card counts, active-turn state, score, and connection state.
-4. Run deterministic simulations for every player count to measure round length, stock recycling, blocked rounds, and ten-card hand viability; use results to resolve the open balance questions before changing `BasicRummyV1`.
-5. Add integration and end-to-end scenarios for 3, 4, and 8 players, including middle-seat disconnect/reconnect and turn advancement around disconnected seats according to policy.
+- [ ] 1. Generalize lobby seats, readiness, start constraints, turn rotation, dealer rotation, and host migration for 3–8 occupied seats.
+- [ ] 2. Verify one-deck behavior for 2–3 players and two-deck physical card identities for 4–8 players, including duplicate-suit set rejection.
+- [ ] 3. Add responsive opponent layouts, including a compact carousel/strip on narrow screens, while retaining readable card counts, active-turn state, score, and connection state.
+- [ ] 4. Run deterministic simulations for every player count to measure round length, stock recycling, blocked rounds, and ten-card hand viability; use results to resolve the open balance questions before changing `BasicRummyV1`.
+- [ ] 5. Add integration and end-to-end scenarios for 3, 4, and 8 players, including middle-seat disconnect/reconnect and turn advancement around disconnected seats according to policy.
 
 ### Acceptance gate
 
@@ -249,16 +262,18 @@ Goal: support the full advertised player-count range without weakening rules, se
 
 ## Phase 6 — Product quality and release readiness
 
+- [ ] **Phase complete**
+
 Goal: make the single-process, in-memory version suitable for a controlled public playtest.
 
 ### Steps
 
-1. Conduct an accessibility audit covering keyboard order, screen-reader announcements, focus restoration, contrast, suit differentiation, reduced motion, zoom, and touch target size; add regression tests where practical.
-2. Polish responsive layouts, reconnect/error messaging, rules explanations, onboarding, empty/loading states, and action feedback.
-3. Add privacy-safe operational dashboards/alerts and a support-friendly room diagnostic view that contains no hands, stock order, credentials, email addresses, or full WebSocket payloads.
-4. Perform dependency/security review, fuzz protocol decoding and command validation, and exercise abuse controls.
-5. Document local development, deployment, configuration, backup limitations, known rule choices, and the explicit restart-loss limitation.
-6. Run a staged playtest and record rule-balance, UX, reconnect, latency, and abandonment findings before declaring the release candidate.
+- [ ] 1. Conduct an accessibility audit covering keyboard order, screen-reader announcements, focus restoration, contrast, suit differentiation, reduced motion, zoom, and touch target size; add regression tests where practical.
+- [ ] 2. Polish responsive layouts, reconnect/error messaging, rules explanations, onboarding, empty/loading states, and action feedback.
+- [ ] 3. Add privacy-safe operational dashboards/alerts and a support-friendly room diagnostic view that contains no hands, stock order, credentials, email addresses, or full WebSocket payloads.
+- [ ] 4. Perform dependency/security review, fuzz protocol decoding and command validation, and exercise abuse controls.
+- [ ] 5. Document local development, deployment, configuration, backup limitations, known rule choices, and the explicit restart-loss limitation.
+- [ ] 6. Run a staged playtest and record rule-balance, UX, reconnect, latency, and abandonment findings before declaring the release candidate.
 
 ### Acceptance gate
 
@@ -269,20 +284,22 @@ Goal: make the single-process, in-memory version suitable for a controlled publi
 
 ## Phase 7 — Add durable storage and distributed infrastructure later
 
+- [ ] **Phase complete**
+
 Goal: add PostgreSQL and, only where justified, Redis/multi-instance coordination without moving game legality out of the room actor.
 
 This phase starts only after the in-memory model and event boundaries have proven stable. It is not required for the initial two-player prototype or the first single-process playtest.
 
 ### Steps
 
-1. Design and migrate PostgreSQL storage for identities/sessions, rooms/membership, append-only canonical events, command receipts, snapshots, and match results.
-2. Introduce repository/event-store interfaces at the server boundary and retain an in-memory implementation for fast tests; do not add storage dependencies to `game-core`.
-3. Persist accepted events and command receipts transactionally before broadcast, protect hidden state at rest, and write periodic/versioned snapshots.
-4. Recover room actors by loading a snapshot and replaying later events, then validate sequence and card-conservation invariants before allowing reconnects.
-5. Add restart tests for accepted-command-before-ack, command idempotency across restart, corrupt recovery quarantine, and session/seat restoration.
-6. Establish explicit retention, archival, deletion, migration/versioning, backup, restore, and encryption policies.
-7. Introduce Redis only for a demonstrated distributed need such as instance/room leases, presence, routing metadata, or pub/sub. Redis must not become the authoritative game state.
-8. Before running multiple server instances, implement room affinity/ownership transfer, lease fencing, reconnect routing, and failure tests that prove only one actor owns a room at a time.
+- [ ] 1. Design and migrate PostgreSQL storage for identities/sessions, rooms/membership, append-only canonical events, command receipts, snapshots, and match results.
+- [ ] 2. Introduce repository/event-store interfaces at the server boundary and retain an in-memory implementation for fast tests; do not add storage dependencies to `game-core`.
+- [ ] 3. Persist accepted events and command receipts transactionally before broadcast, protect hidden state at rest, and write periodic/versioned snapshots.
+- [ ] 4. Recover room actors by loading a snapshot and replaying later events, then validate sequence and card-conservation invariants before allowing reconnects.
+- [ ] 5. Add restart tests for accepted-command-before-ack, command idempotency across restart, corrupt recovery quarantine, and session/seat restoration.
+- [ ] 6. Establish explicit retention, archival, deletion, migration/versioning, backup, restore, and encryption policies.
+- [ ] 7. Introduce Redis only for a demonstrated distributed need such as instance/room leases, presence, routing metadata, or pub/sub. Redis must not become the authoritative game state.
+- [ ] 8. Before running multiple server instances, implement room affinity/ownership transfer, lease fencing, reconnect routing, and failure tests that prove only one actor owns a room at a time.
 
 ### Acceptance gate
 
