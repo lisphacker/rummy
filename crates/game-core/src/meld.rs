@@ -2,6 +2,7 @@ use crate::{
     card::{Card, Rank, Suit, incr_rank, next_rank, prev_rank},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
+    rules::config::MeldRulesConfig,
 };
 use std::collections::BTreeSet;
 use std::collections::HashSet;
@@ -20,8 +21,8 @@ pub struct Meld {
 }
 
 impl Meld {
-    pub fn new_set(cards: &[Card]) -> GameResult<Self> {
-        let (rank, suits, num_joker_cards) = validate_set_cards(cards, true)?;
+    pub fn new_set(cards: &[Card], rules: &MeldRulesConfig) -> GameResult<Self> {
+        let (rank, suits, num_joker_cards) = validate_set_cards(cards, rules, true)?;
         let card_ids = validate_unique_card_ids(cards)?;
         Ok(Self {
             meld_type: MeldType::Set { rank, suits },
@@ -30,8 +31,8 @@ impl Meld {
         })
     }
 
-    pub fn new_run(cards: &[Card]) -> GameResult<Self> {
-        let (suit, start, end, num_joker_cards) = validate_run_cards(cards, true)?;
+    pub fn new_run(cards: &[Card], rules: &MeldRulesConfig) -> GameResult<Self> {
+        let (suit, start, end, num_joker_cards) = validate_run_cards(cards, rules, true)?;
         let card_ids = validate_unique_card_ids(cards)?;
         Ok(Self {
             meld_type: MeldType::Run { suit, start, end },
@@ -40,7 +41,7 @@ impl Meld {
         })
     }
 
-    pub fn add(&mut self, card: Card) -> GameResult<()> {
+    pub fn add(&mut self, card: Card, rules: &MeldRulesConfig) -> GameResult<()> {
         if self.card_ids.contains(&card.id) {
             return error(MeldError::CardAlreadyInMeld);
         }
@@ -63,9 +64,13 @@ impl Meld {
                         suits.insert(suit);
                     }
                     crate::card::CardFace::Joker => {
+                        if !rules.allow_jokers() {
+                            return error(MeldError::JokersNotAllowed);
+                        }
                         if suits.len() + self.num_joker_cards + 1 > 4 {
                             return error(MeldError::SetCannotHaveMoreThanFourCards);
                         }
+                        self.num_joker_cards += 1;
                     }
                 }
                 self.card_ids.push(card.id);
@@ -103,14 +108,19 @@ impl Meld {
                         error(MeldError::RunMustHaveConsecutiveRanks)
                     }
                     crate::card::CardFace::Joker => {
+                        if !rules.allow_jokers() {
+                            return error(MeldError::JokersNotAllowed);
+                        }
                         // Joker can be added to either end of the run
                         if let Some(new_start) = prev_rank(*start) {
                             *start = new_start;
+                            self.num_joker_cards += 1;
                             self.card_ids.push(card.id);
                             return Ok(());
                         }
                         if let Some(new_end) = next_rank(*end) {
                             *end = new_end;
+                            self.num_joker_cards += 1;
                             self.card_ids.push(card.id);
                             return Ok(());
                         }
@@ -128,9 +138,10 @@ fn error<T>(e: MeldError) -> GameResult<T> {
 
 fn validate_set_cards(
     cards: &[Card],
+    rules: &MeldRulesConfig,
     require_complete: bool,
 ) -> GameResult<(Rank, BTreeSet<Suit>, usize)> {
-    if require_complete && cards.len() < 3 {
+    if require_complete && cards.len() < rules.minimum_meld_size() {
         return error(MeldError::NotEnoughCardsForMeld);
     }
 
@@ -138,6 +149,9 @@ fn validate_set_cards(
         .iter()
         .filter(|card| matches!(card.face, crate::card::CardFace::Joker))
         .count();
+    if num_joker_cards > 0 && !rules.allow_jokers() {
+        return error(MeldError::JokersNotAllowed);
+    }
     let non_joker_cards: Vec<&Card> = cards
         .iter()
         .filter(|card| !matches!(card.face, crate::card::CardFace::Joker))
@@ -181,9 +195,10 @@ fn validate_set_cards(
 
 fn validate_run_cards(
     cards: &[Card],
+    rules: &MeldRulesConfig,
     require_complete: bool,
 ) -> GameResult<(Suit, Rank, Rank, usize)> {
-    if require_complete && cards.len() < 3 {
+    if require_complete && cards.len() < rules.minimum_meld_size() {
         return error(MeldError::NotEnoughCardsForMeld);
     }
 
@@ -191,6 +206,9 @@ fn validate_run_cards(
         .iter()
         .filter(|card| matches!(card.face, crate::card::CardFace::Joker))
         .count();
+    if num_joker_cards > 0 && !rules.allow_jokers() {
+        return error(MeldError::JokersNotAllowed);
+    }
     let non_joker_cards: Vec<&Card> = cards
         .iter()
         .filter(|card| !matches!(card.face, crate::card::CardFace::Joker))
@@ -333,7 +351,12 @@ mod tests {
         card::{Card, CardFace, Rank, Suit},
         errors::GameError,
         id::CardId,
+        rules::config::MeldRulesConfig,
     };
+
+    fn rules() -> MeldRulesConfig {
+        MeldRulesConfig::new(3, true)
+    }
 
     fn card(rank: Rank, suit: Suit) -> Card {
         Card {
@@ -355,7 +378,7 @@ mod tests {
             card(Rank::Seven, Suit::Clubs),
             card(Rank::Seven, Suit::Hearts),
         ];
-        let result = Meld::new_set(&cards);
+        let result = Meld::new_set(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -367,11 +390,29 @@ mod tests {
     #[test]
     fn new_set_has_no_non_joker_cards() {
         let cards = vec![joker(), joker(), joker()];
-        let result = Meld::new_set(&cards);
+        let result = Meld::new_set(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
                 crate::errors::MeldError::MeldMustHaveNonJokerCards
+            ))
+        ));
+    }
+
+    #[test]
+    fn basic_rummy_rejects_jokers_in_melds() {
+        let cards = vec![
+            card(Rank::Seven, Suit::Clubs),
+            card(Rank::Seven, Suit::Diamonds),
+            joker(),
+        ];
+
+        let result = Meld::new_set(&cards, &MeldRulesConfig::basic_rummy_v1());
+
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::JokersNotAllowed
             ))
         ));
     }
@@ -383,7 +424,7 @@ mod tests {
             card(Rank::Eight, Suit::Hearts),
             card(Rank::Seven, Suit::Diamonds),
         ];
-        let result = Meld::new_set(&cards);
+        let result = Meld::new_set(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -399,7 +440,7 @@ mod tests {
             card(Rank::Seven, Suit::Clubs),
             card(Rank::Seven, Suit::Diamonds),
         ];
-        let result = Meld::new_set(&cards);
+        let result = Meld::new_set(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -417,7 +458,7 @@ mod tests {
             joker(),
             joker(),
         ];
-        let result = Meld::new_set(&cards);
+        let result = Meld::new_set(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -432,7 +473,7 @@ mod tests {
             card(Rank::Seven, Suit::Clubs),
             card(Rank::Eight, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -448,7 +489,7 @@ mod tests {
             card(Rank::Eight, Suit::Hearts),
             card(Rank::Nine, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -464,7 +505,7 @@ mod tests {
             card(Rank::Seven, Suit::Clubs),
             card(Rank::Eight, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -482,7 +523,7 @@ mod tests {
             card(Rank::Ace, Suit::Clubs),
             card(Rank::Ace, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -499,7 +540,7 @@ mod tests {
             card(Rank::Four, Suit::Clubs),
             card(Rank::Five, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -516,7 +557,7 @@ mod tests {
             card(Rank::Three, Suit::Clubs),
             card(Rank::Ace, Suit::Clubs),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(matches!(
             result,
             Err(GameError::MeldError(
@@ -535,7 +576,7 @@ mod tests {
             joker(),
             joker(),
         ];
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
         assert!(result.is_ok());
     }
 
@@ -547,11 +588,11 @@ mod tests {
             card(Rank::Seven, Suit::Hearts),
         ];
         let added_card = card(Rank::Seven, Suit::Spades);
-        let Ok(mut meld) = Meld::new_set(&cards) else {
+        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
             panic!("the initial set should be valid");
         };
 
-        let result = meld.add(added_card);
+        let result = meld.add(added_card, &rules());
 
         assert!(result.is_ok());
         assert!(meld.card_ids.contains(&added_card.id));
@@ -569,11 +610,11 @@ mod tests {
             card(Rank::Nine, Suit::Clubs),
         ];
         let added_card = card(Rank::Ten, Suit::Clubs);
-        let Ok(mut meld) = Meld::new_run(&cards) else {
+        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
             panic!("the initial run should be valid");
         };
 
-        let result = meld.add(added_card);
+        let result = meld.add(added_card, &rules());
 
         assert!(result.is_ok());
         assert!(meld.card_ids.contains(&added_card.id));
@@ -607,7 +648,7 @@ mod tests {
             joker(),
         ];
 
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
 
         assert!(matches!(
             result,
@@ -627,7 +668,7 @@ mod tests {
         let expected_ids: Vec<CardId> = cards.iter().map(|card| card.id).collect();
 
         for _ in 0..32 {
-            let Ok(meld) = Meld::new_set(&cards) else {
+            let Ok(meld) = Meld::new_set(&cards, &rules()) else {
                 panic!("the set should be valid");
             };
             assert_eq!(meld.card_ids, expected_ids);
@@ -641,11 +682,11 @@ mod tests {
             card(Rank::King, Suit::Clubs),
             card(Rank::Ace, Suit::Clubs),
         ];
-        let Ok(mut meld) = Meld::new_run(&cards) else {
+        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
             panic!("the initial high-ace run should be valid");
         };
 
-        let result = meld.add(card(Rank::Two, Suit::Clubs));
+        let result = meld.add(card(Rank::Two, Suit::Clubs), &rules());
 
         assert!(matches!(
             result,
@@ -658,12 +699,15 @@ mod tests {
     #[test]
     fn add_rejects_a_fifth_card_when_a_set_contains_jokers() {
         let cards = vec![card(Rank::Seven, Suit::Clubs), joker(), joker()];
-        let Ok(mut meld) = Meld::new_set(&cards) else {
+        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
             panic!("the initial set should be valid");
         };
-        assert!(meld.add(card(Rank::Seven, Suit::Diamonds)).is_ok());
+        assert!(
+            meld.add(card(Rank::Seven, Suit::Diamonds), &rules())
+                .is_ok()
+        );
 
-        let result = meld.add(card(Rank::Seven, Suit::Hearts));
+        let result = meld.add(card(Rank::Seven, Suit::Hearts), &rules());
 
         assert!(matches!(
             result,
@@ -681,11 +725,11 @@ mod tests {
             card(Rank::Seven, Suit::Diamonds),
             duplicate,
         ];
-        let Ok(mut meld) = Meld::new_set(&cards) else {
+        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
             panic!("the initial set should be valid");
         };
 
-        let result = meld.add(duplicate);
+        let result = meld.add(duplicate, &rules());
 
         assert!(matches!(
             result,
@@ -710,11 +754,11 @@ mod tests {
             card(Rank::King, Suit::Clubs),
         ];
         let ace = card(Rank::Ace, Suit::Clubs);
-        let Ok(mut meld) = Meld::new_run(&cards) else {
+        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
             panic!("the initial run should be valid");
         };
 
-        let result = meld.add(ace);
+        let result = meld.add(ace, &rules());
 
         assert!(result.is_ok());
         assert!(meld.card_ids.contains(&ace.id));
@@ -737,7 +781,7 @@ mod tests {
         ];
         cards.extend((0..11).map(|_| joker()));
 
-        let result = Meld::new_run(&cards);
+        let result = Meld::new_run(&cards, &rules());
 
         assert!(result.is_ok());
     }
@@ -750,7 +794,7 @@ mod tests {
             card(Rank::Seven, Suit::Hearts),
             card(Rank::Seven, Suit::Spades),
         ];
-        let Ok(first_meld) = Meld::new_set(&cards) else {
+        let Ok(first_meld) = Meld::new_set(&cards, &rules()) else {
             panic!("the set should be valid");
         };
         let Ok(expected) = serde_json::to_string(&first_meld) else {
@@ -758,7 +802,7 @@ mod tests {
         };
 
         for _ in 0..64 {
-            let Ok(meld) = Meld::new_set(&cards) else {
+            let Ok(meld) = Meld::new_set(&cards, &rules()) else {
                 panic!("the set should be valid");
             };
             let Ok(serialized) = serde_json::to_string(&meld) else {

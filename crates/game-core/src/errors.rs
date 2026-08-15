@@ -3,6 +3,7 @@ pub enum MeldError {
     NotEnoughCardsForMeld,
     MeldMustHaveNonJokerCards,
     MeldHasTooManyJokerCards,
+    JokersNotAllowed,
     SetMustHaveSameRank,
     SetMustHaveUniqueSuits,
     SetHasTooManyJokers,
