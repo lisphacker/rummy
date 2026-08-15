@@ -29,6 +29,8 @@ pub enum GamePhase {
     GameEnded,
 }
 
+pub type CardIdCreateFn = fn() -> CardId;
+
 #[derive(Debug)]
 pub struct GameState {
     id: GameId,
@@ -38,10 +40,11 @@ pub struct GameState {
     discard_pile: Vec<CardId>,
     phase: GamePhase,
     config: Option<GameConfig>,
+    card_id_create_fn: CardIdCreateFn,
 }
 
 impl GameState {
-    pub fn new(id: GameId) -> Self {
+    pub fn new(id: GameId, card_id_create_fn: CardIdCreateFn) -> Self {
         Self {
             id,
             players: OrderedMap::new(),
@@ -50,6 +53,7 @@ impl GameState {
             discard_pile: Vec::new(),
             phase: GamePhase::WaitingForPlayers,
             config: None,
+            card_id_create_fn,
         }
     }
 
@@ -68,12 +72,12 @@ impl GameState {
         for _ in 0..config.deck_count() {
             for suit in Suit::iter() {
                 for rank in Rank::iter() {
-                    let card = Card::standard(CardId::new(), suit, rank);
+                    let card = Card::standard((self.card_id_create_fn)(), suit, rank);
                     cards.push(card);
                 }
             }
             for _ in 0..config.jokers_per_deck() {
-                cards.push(Card::joker(CardId::new()));
+                cards.push(Card::joker((self.card_id_create_fn)()));
             }
         }
         self.deck = cards.into_iter().map(|card| (card.id, card)).collect();
