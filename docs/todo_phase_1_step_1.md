@@ -1,57 +1,88 @@
-I reviewed the full range `fb33f82..HEAD`; the named commit itself only marks Phase 0, Step 2 complete.
-
 ## Findings
 
-1. High: the rules engine is still nondeterministic. [`GameState::new()`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:26) generates a random `GameId`, while [`Card::new()`](/Users/gautham/dev/rummy/crates/game-core/src/card.rs:127) generates random card IDs. Identical inputs therefore do not produce identical states.
+1. High: shuffling is currently unreachable. [`initialize_game_from_config()`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:56) never changes the phase from `WaitingForPlayers` to `InitializingGame`, while [`shuffle_draw_stack()`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:84) only accepts `InitializingGame` or `RestockingDrawStack`. Both permitted phases are private and currently cannot be entered.
 
-2. High: private draft organization is stored in authoritative, serializable [`Player`](/Users/gautham/dev/rummy/crates/game-core/src/player.rs:10). `draft_melds` and `uncategorized_cards` must remain client-local under `BasicRummyV1`.
+2. High: [`TurnState::Drawn { drawn }`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:11) cannot distinguish stock and discard draws. The stored card would therefore either:
+   - incorrectly prevent rediscarding a stock-drawn card; or
+   - fail to enforce the restriction for discard draws.
 
-3. High: [`GameConfig`](/Users/gautham/dev/rummy/crates/game-core/src/config.rs:105) derives `Deserialize`, allowing arbitrary invalid field combinations to bypass `basic_rummy_v1()`. Deserialization needs validation, or serialized data should contain only a profile plus player count and reconstruct the validated configuration.
+   Prefer:
 
-4. High: [`GameState`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:16) does not yet represent the Step 1 state:
-   - no stored rules;
-   - no round ID/state;
-   - no dealer or typed seats;
-   - no separate turn stage;
-   - no recycle count;
-   - no accepted declarations;
-   - no match scores.
+   ```rust
+   pub enum TurnState {
+       AwaitingDraw,
+       AfterDraw {
+           forbidden_discard: Option<CardId>,
+       },
+   }
+   ```
 
-5. Medium: [`GamePhase::PlayerTurn`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:10) uses a raw `usize` and combines game phase, active seat, and turn stage. This makes invalid combinations easy to create.
+3. High: deck construction remains nondeterministic. [`initialize_deck()`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:65) calls `CardId::new()` internally. The new explicit-ID card constructors are good, but the IDs must be supplied to deck generation or generated through an injected source.
 
-6. Medium: there is no validated constructor for 2–8 distinct seated players. `GameState::new()` creates an empty mutable state, and all fields are public.
+4. High: player count is not validated against actual players. [`GameConfig::player_count()`](/Users/gautham/dev/rummy/crates/game-core/src/config.rs:160) may say four while `GameState.players` contains zero, two, duplicates, or eight. Initialization should validate the ordered player collection before committing configuration/deck state.
 
-7. Medium: [`initialize_deck()`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:37) is an unrestricted mutator. Calling it after cards have entered hands or the discard pile can replace the deck while leaving stale card references, violating card conservation.
+5. Medium: `Discarded` should probably not be a persistent turn state. A valid discard atomically ends the turn and advances the active player to `AwaitingDraw`. Exposing `Discarded` creates an intermediate state in which the engine can become stuck.
 
-8. Medium: `OrderedMap` duplicates the already-declared `indexmap` dependency but lacks serialization, equality, length, and other functionality the state will need.
+6. Medium: `RestockingDrawStack` should not be a long-lived game phase. Recycling and shuffling should happen atomically during a draw attempt, using supplied randomness. Otherwise commands can observe a partially restocked round.
 
-9. Quality gate: `cargo test -p game-core --all-features` passes all 23 tests, but workspace Clippy fails with 20 errors. Therefore Phase 0’s acceptance gate is still not met.
+7. Medium: [`winning_player_id`](/Users/gautham/dev/rummy/crates/game-core/src/state.rs:27) is premature terminology. At this point the player is the `declarer`; the match winner is not known until scoring updates the accumulated totals.
 
-## What to do next
+8. Medium: the state still lacks Step 1 data:
+   - recycle count;
+   - accepted declaration;
+   - opponents’ scoring submissions;
+   - match scores;
+   - round versus match completion;
+   - stable starting/active player tracking between rounds.
 
-First finish Phase 0 Steps 3 and 4:
+9. Medium: [`Player`](/Users/gautham/dev/rummy/crates/game-core/src/player.rs:10) still stores `draft_melds` and `uncategorized_cards`. Those are explicitly client-local presentation state and should not be in authoritative game state.
 
-- Add deterministic IDs, ordered deck builders, players, and seeded shuffle helpers to `test-support`.
-- Fix the current Clippy failures.
+## Configuration review
 
-Then the next Phase 1 task should be replacing the current `GameState` scaffold with validated domain types:
+`GameConfig` is in much better shape:
 
-```text
-GameState
-├── game_id
-├── rules
-├── phase
-├── seats
-├── round
-│   ├── dealer
-│   ├── active_seat
-│   ├── turn_stage
-│   ├── player hands
-│   ├── stock
-│   ├── discard
-│   ├── recycle_count
-│   └── accepted declarations
-└── match_scores
+- It has a versioned profile.
+- Player counts are validated.
+- Deck count is derived correctly.
+- Fields are private.
+- Removing direct `Deserialize` prevents invalid field combinations from bypassing the constructor.
+- The canonical Basic Rummy values are represented explicitly.
+
+Minor improvements:
+
+- `basic_rummy_v1()` should return `Result<Self, ConfigError>` rather than the broad `GameResult<Self>`.
+- `UnsupportedPlayerCount` should retain the rejected value.
+- The test-only “BasicRummyV1 with jokers” configuration technically contradicts its profile identity. A test-specific meld configuration or lower-level `MeldRules` would be cleaner.
+
+## Recommended next shape
+
+```rust
+pub enum TurnState {
+    AwaitingDraw,
+    AfterDraw {
+        forbidden_discard: Option<CardId>,
+    },
+}
+
+pub enum GamePhase {
+    WaitingForPlayers,
+    Playing {
+        active_player_index: usize,
+        turn: TurnState,
+    },
+    Scoring {
+        declarer: PlayerId,
+    },
+    RoundComplete,
+    MatchComplete,
+}
 ```
 
-The constructor should accept explicit IDs and an ordered player list, reject duplicate or unsupported players atomically, and generate the canonical unshuffled physical-card multiset. Shuffling and dealing remain Step 2.
+Then make initialization one validated, atomic operation that accepts:
+
+- `GameId`;
+- `GameConfig`;
+- an ordered list of distinct players;
+- deterministic card IDs or a prebuilt ordered deck.
+
+Tests currently pass: 23/23. Clippy still fails with 24 findings, including several in the new state API.
