@@ -6,9 +6,19 @@ use crate::ordered_map::OrderedMap;
 use crate::player::Player;
 
 #[derive(Debug)]
+pub enum TurnState {
+    AwaitingDraw,
+    Drawn { drawn: CardId },
+    Discarded { discarded: CardId },
+}
+
+#[derive(Debug)]
 pub enum GamePhase {
     WaitingForPlayers,
-    PlayerTurn { player_index: usize },
+    PlayerTurn {
+        player_index: usize,
+        turn_state: TurnState,
+    },
     GameEndingWaitingForPlayerSubmissions,
     GameEnded,
 }
