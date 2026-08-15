@@ -150,7 +150,7 @@ fn validate_run_cards(
     }
 
     let num_ace_ranks = ranks.iter().filter(|&&rank| rank == Rank::Ace).count();
-    if num_ace_ranks > 2 {
+    if num_ace_ranks > 1 {
         return error(MeldError::RankHasTooManyAces);
     }
 
