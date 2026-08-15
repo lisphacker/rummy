@@ -257,7 +257,7 @@ fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
     if unique_card_ids.len() == cards.len() {
         Ok(card_ids)
     } else {
-        error(MeldError::NotEnoughCardsForMeld)
+        error(MeldError::DuplicateCardsInMeld)
     }
 }
 
@@ -397,6 +397,32 @@ mod tests {
                 crate::errors::MeldError::NotEnoughCardsForMeld
             ))
         ));
+    }
+
+    #[test]
+    fn new_run_accepts_ace_low() {
+        let cards = vec![
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Two, Suit::Clubs),
+            card(Rank::Three, Suit::Clubs),
+        ];
+
+        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn new_run_accepts_ace_high() {
+        let cards = vec![
+            card(Rank::Queen, Suit::Clubs),
+            card(Rank::King, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+        ];
+
+        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -560,6 +586,32 @@ mod tests {
             };
             assert_eq!(meld.card_ids, expected_ids);
         }
+    }
+
+    #[test]
+    fn new_meld_rejects_duplicate_physical_card_ids() {
+        let duplicate_id = CardId::new();
+        let cards = vec![
+            Card {
+                id: duplicate_id,
+                face: CardFace::Standard {
+                    rank: Rank::Seven,
+                    suit: Suit::Clubs,
+                },
+            },
+            Card {
+                id: duplicate_id,
+                face: CardFace::Standard {
+                    rank: Rank::Seven,
+                    suit: Suit::Diamonds,
+                },
+            },
+            card(Rank::Seven, Suit::Hearts),
+        ];
+
+        let result = Meld::new_set(&cards, &MeldRulesConfig::basic_rummy_v1());
+
+        assert!(result.is_err());
     }
 
     #[test]
