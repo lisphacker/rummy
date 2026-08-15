@@ -14,8 +14,14 @@ pub enum MeldError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum HandError {
+    CannotMoveCard,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum GameError {
     MeldError(MeldError),
+    HandError(HandError),
 }
 
 pub type GameResult<T> = Result<T, GameError>;
