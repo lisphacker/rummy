@@ -1,24 +1,37 @@
 use crate::card::{Card, Rank, Suit};
-use crate::id::CardId;
+use crate::id::{CardId, GameId, PlayerId};
+use crate::ordered_map::OrderedMap;
 use crate::player::Player;
 use crate::rules::config::GameConfig;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+pub enum GamePhase {
+    WaitingForPlayers,
+    PlayerTurn { player_index: usize },
+    GameEndingWaitingForPlayerSubmissions,
+    GameEnded,
+}
+
+#[derive(Debug)]
 pub struct GameState {
-    pub players: Vec<Player>,
-    pub deck: HashMap<CardId, Card>,
+    pub id: GameId,
+    pub players: OrderedMap<PlayerId, Player>,
+    pub deck: OrderedMap<CardId, Card>,
     pub draw_stack: Vec<CardId>,
     pub discard_pile: Vec<CardId>,
+    pub phase: GamePhase,
 }
 
 impl GameState {
     pub fn new() -> Self {
         Self {
-            players: Vec::new(),
-            deck: HashMap::new(),
+            id: GameId::new(),
+            players: OrderedMap::new(),
+            deck: OrderedMap::new(),
             draw_stack: Vec::new(),
             discard_pile: Vec::new(),
+            phase: GamePhase::WaitingForPlayers,
         }
     }
 
