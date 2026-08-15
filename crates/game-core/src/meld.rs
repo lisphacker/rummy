@@ -7,6 +7,11 @@ use crate::{
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 
+fn all_unique<T: Eq + std::hash::Hash>(items: &[T]) -> bool {
+    let unique_items: HashSet<&T> = items.iter().collect();
+    unique_items.len() == items.len()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum MeldType {
     Set { rank: Rank, suits: BTreeSet<Suit> },
@@ -76,7 +81,7 @@ fn validate_set_cards(
             crate::card::CardFace::Standard { rank, .. } => rank,
             crate::card::CardFace::Joker => unreachable!(),
         })
-        .collect::<BTreeSet<Rank>>()
+        .collect::<HashSet<Rank>>()
         .into_iter()
         .collect();
 
@@ -169,7 +174,17 @@ fn validate_run_cards(
         return error(MeldError::RunMustHaveConsecutiveRanks);
     }
 
-    if !sorted_non_ace_ranks.is_empty() {
+    if sorted_non_ace_ranks.is_empty() {
+        if num_ace_ranks == 1 && num_joker_cards >= 2 {
+            let start = Rank::Ace;
+            match incr_rank(start, num_joker_cards) {
+                Some(end) => Ok((suits[0], start, end, num_joker_cards)),
+                None => error(MeldError::MeldHasTooManyJokerCards),
+            }
+        } else {
+            return error(MeldError::NotEnoughCardsForMeld);
+        }
+    } else {
         let mut start = sorted_non_ace_ranks[0];
         let mut end = sorted_non_ace_ranks[0];
 
@@ -233,14 +248,6 @@ fn validate_run_cards(
             return error(MeldError::RunMustHaveConsecutiveRanks);
         }
         Ok((suits[0], start, end, num_joker_cards))
-    } else if num_ace_ranks == 1 && num_joker_cards >= 2 {
-        let start = Rank::Ace;
-        match incr_rank(start, num_joker_cards) {
-            Some(end) => Ok((suits[0], start, end, num_joker_cards)),
-            None => error(MeldError::RunMustHaveConsecutiveRanks),
-        }
-    } else {
-        error(MeldError::RunMustHaveConsecutiveRanks)
     }
 }
 
@@ -468,6 +475,24 @@ mod tests {
             card(Rank::Ace, Suit::Clubs),
         ];
         let result = Meld::new_run(&cards, &rules());
+        assert!(matches!(
+            result,
+            Err(GameError::MeldError(
+                crate::errors::MeldError::RankHasTooManyAces
+            ))
+        ));
+    }
+
+    #[test]
+    fn new_run_rejects_king_ace_two_wraparound() {
+        let cards = vec![
+            card(Rank::King, Suit::Clubs),
+            card(Rank::Ace, Suit::Clubs),
+            card(Rank::Two, Suit::Clubs),
+        ];
+
+        let result = Meld::new_run(&cards, &MeldRulesConfig::basic_rummy_v1());
+
         assert!(matches!(
             result,
             Err(GameError::MeldError(
