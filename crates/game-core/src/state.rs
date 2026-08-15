@@ -1,5 +1,6 @@
 use crate::card::{Card, Rank, Suit};
 use crate::config::GameConfig;
+use crate::errors::GameResult;
 use crate::id::{CardId, GameId, PlayerId};
 use crate::ordered_map::OrderedMap;
 use crate::player::Player;
@@ -14,27 +15,43 @@ pub enum GamePhase {
 
 #[derive(Debug)]
 pub struct GameState {
-    pub id: GameId,
-    pub players: OrderedMap<PlayerId, Player>,
-    pub deck: OrderedMap<CardId, Card>,
-    pub draw_stack: Vec<CardId>,
-    pub discard_pile: Vec<CardId>,
-    pub phase: GamePhase,
+    id: GameId,
+    players: OrderedMap<PlayerId, Player>,
+    deck: OrderedMap<CardId, Card>,
+    draw_stack: Vec<CardId>,
+    discard_pile: Vec<CardId>,
+    phase: GamePhase,
+    config: Option<GameConfig>,
 }
 
 impl GameState {
-    pub fn new() -> Self {
+    pub fn new(id: GameId) -> Self {
         Self {
-            id: GameId::new(),
+            id,
             players: OrderedMap::new(),
             deck: OrderedMap::new(),
             draw_stack: Vec::new(),
             discard_pile: Vec::new(),
             phase: GamePhase::WaitingForPlayers,
+            config: None,
         }
     }
 
-    pub fn initialize_deck(&mut self, game_config: GameConfig) {
+    pub fn set_basic_rummy_v1(&mut self, num_players: u8) -> GameResult<()> {
+        if self.config.is_some() {
+            return Err(crate::errors::GameError::ConfigError(
+                crate::errors::ConfigError::ConfigAlreadySet,
+            ));
+        }
+        let config = GameConfig::basic_rummy_v1(num_players)?;
+        self.config = Some(config);
+        Ok(())
+    }
+
+    pub fn initialize_deck(&mut self) -> GameResult<()> {
+        let game_config = self.config.ok_or_else(|| {
+            crate::errors::GameError::ConfigError(crate::errors::ConfigError::ConfigNotSet)
+        })?;
         let mut cards = Vec::new();
         for _ in 0..game_config.deck_count() {
             for suit in Suit::iter() {
@@ -49,6 +66,7 @@ impl GameState {
         }
         self.deck = cards.into_iter().map(|card| (card.id, card)).collect();
         self.draw_stack = self.deck.keys().cloned().collect();
+        Ok(())
     }
 
     pub fn shuffle_draw_stack(&mut self) {

@@ -101,7 +101,7 @@ impl ScoringRules {
 }
 
 /// Complete, validated rules used for one game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameConfig {
     profile: RulesProfile,
     player_count: u8,
