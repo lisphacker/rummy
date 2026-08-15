@@ -263,7 +263,7 @@ mod tests {
         for player_count in [0, 1, 9, u8::MAX] {
             assert_eq!(
                 GameConfig::basic_rummy_v1(player_count),
-                Err(ConfigError::UnsupportedPlayerCount { player_count })
+                Err(GameError::ConfigError(ConfigError::UnsupportedPlayerCount))
             );
         }
     }
