@@ -38,7 +38,7 @@ Goal: establish a trustworthy, documented baseline on which the rules engine can
      top-discard-only pickup, private candidate melds, complete-hand declarations
      and two stock recycles.
 
-- [ ] 2. Make the existing meld implementation deterministic and profile-driven.
+- [x] 2. Make the existing meld implementation deterministic and profile-driven.
    - Fix ace boundary handling and prevent `K-A-2` wrapping.
    - Replace unordered serialized collections with deterministic representations where they enter equality, snapshots, or protocol data.
    - Either correctly support joker validation behind configuration or explicitly reject jokers in `BasicRummyV1`; do not leave contradictory behavior.
