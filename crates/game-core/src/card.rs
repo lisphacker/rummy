@@ -124,16 +124,16 @@ pub struct Card {
 }
 
 impl Card {
-    pub fn new(suit: Suit, rank: Rank) -> Self {
-        let id = CardId::new();
+    #[must_use]
+    pub const fn standard(id: CardId, suit: Suit, rank: Rank) -> Self {
         Self {
             id,
             face: CardFace::Standard { rank, suit },
         }
     }
 
-    pub fn new_joker() -> Self {
-        let id = CardId::new();
+    #[must_use]
+    pub const fn joker(id: CardId) -> Self {
         Self {
             id,
             face: CardFace::Joker,

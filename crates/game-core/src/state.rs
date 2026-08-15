@@ -39,12 +39,12 @@ impl GameState {
         for _ in 0..game_config.deck_count() {
             for suit in Suit::iter() {
                 for rank in Rank::iter() {
-                    let card = Card::new(suit, rank);
+                    let card = Card::standard(CardId::new(), suit, rank);
                     cards.push(card);
                 }
             }
             for _ in 0..game_config.jokers_per_deck() {
-                cards.push(Card::new_joker());
+                cards.push(Card::joker(CardId::new()));
             }
         }
         self.deck = cards.into_iter().map(|card| (card.id, card)).collect();
