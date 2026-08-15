@@ -244,7 +244,6 @@ fn validate_run_cards(
     if !sorted_non_ace_ranks.is_empty() {
         let mut start = sorted_non_ace_ranks[0];
         let mut end = sorted_non_ace_ranks[0];
-        let mut num_joker_cards = num_joker_cards;
 
         let mut remaining_jokers = num_joker_cards;
         for &rank in sorted_non_ace_ranks.iter().skip(1) {
@@ -253,7 +252,6 @@ fn validate_run_cards(
                 end = rank;
             } else if d - 1 <= remaining_jokers {
                 remaining_jokers -= d - 1;
-                num_joker_cards += d - 1;
                 end = rank;
             } else {
                 return error(MeldError::RunMustHaveConsecutiveRanks);
@@ -266,7 +264,6 @@ fn validate_run_cards(
             if d - 1 <= remaining_jokers {
                 num_unused_ace_ranks -= 1;
                 remaining_jokers -= d - 1;
-                num_joker_cards += d - 1;
                 start = Rank::Ace;
             }
         }
@@ -275,17 +272,21 @@ fn validate_run_cards(
             if d - 1 <= remaining_jokers {
                 num_unused_ace_ranks -= 1;
                 remaining_jokers -= d - 1;
-                num_joker_cards += d - 1;
                 end = Rank::Ace;
             }
         }
 
         while remaining_jokers > 0 {
-            if let Some(next_rank) = next_rank(end) {
+            if let Some(next_rank) = next_rank(end)
+                && next_rank > start
+            {
                 end = next_rank;
                 remaining_jokers -= 1;
             } else if let Some(prev_rank) = prev_rank(start) {
                 start = prev_rank;
+                remaining_jokers -= 1;
+            } else if end == Rank::King {
+                end = Rank::Ace;
                 remaining_jokers -= 1;
             } else {
                 break;
