@@ -1,14 +1,14 @@
-use std::collections::HashSet;
-
 use crate::{
     card::{Card, Rank, Suit, incr_rank, next_rank, prev_rank},
     errors::{GameError, GameResult, MeldError},
     id::CardId,
 };
+use std::collections::BTreeSet;
+use std::collections::HashSet;
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum MeldType {
-    Set { rank: Rank, suits: HashSet<Suit> },
+    Set { rank: Rank, suits: BTreeSet<Suit> },
     Run { suit: Suit, start: Rank, end: Rank },
 }
 
@@ -129,7 +129,7 @@ fn error<T>(e: MeldError) -> GameResult<T> {
 fn validate_set_cards(
     cards: &[Card],
     require_complete: bool,
-) -> GameResult<(Rank, HashSet<Suit>, usize)> {
+) -> GameResult<(Rank, BTreeSet<Suit>, usize)> {
     if require_complete && cards.len() < 3 {
         return error(MeldError::NotEnoughCardsForMeld);
     }
@@ -152,11 +152,11 @@ fn validate_set_cards(
             crate::card::CardFace::Standard { rank, .. } => rank,
             crate::card::CardFace::Joker => unreachable!(),
         })
-        .collect::<HashSet<Rank>>()
+        .collect::<BTreeSet<Rank>>()
         .into_iter()
         .collect();
 
-    let suits: HashSet<Suit> = non_joker_cards
+    let suits: BTreeSet<Suit> = non_joker_cards
         .iter()
         .map(|card| match card.face {
             crate::card::CardFace::Standard { suit, .. } => suit,
@@ -205,8 +205,6 @@ fn validate_run_cards(
             crate::card::CardFace::Standard { rank, .. } => rank,
             crate::card::CardFace::Joker => unreachable!(),
         })
-        // .collect::<HashSet<Rank>>()
-        // .into_iter()
         .collect();
 
     let suits: Vec<Suit> = non_joker_cards
@@ -215,7 +213,7 @@ fn validate_run_cards(
             crate::card::CardFace::Standard { suit, .. } => suit,
             crate::card::CardFace::Joker => unreachable!(),
         })
-        .collect::<HashSet<Suit>>()
+        .collect::<BTreeSet<Suit>>()
         .into_iter()
         .collect();
 
@@ -761,6 +759,8 @@ mod tests {
             let Ok(serialized) = serde_json::to_string(&meld) else {
                 panic!("the meld should serialize");
             };
+            println!("serialized: {}", serialized);
+            println!("expected:   {}", expected);
             assert_eq!(serialized, expected);
         }
     }
