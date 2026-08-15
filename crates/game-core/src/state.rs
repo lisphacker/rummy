@@ -19,7 +19,9 @@ pub enum GamePhase {
         player_index: usize,
         turn_state: TurnState,
     },
-    GameEndingWaitingForPlayerSubmissions,
+    GameEndingWaitingForPlayerSubmissions {
+        winning_player_id: PlayerId,
+    },
     GameEnded,
 }
 
@@ -47,14 +49,14 @@ impl GameState {
         }
     }
 
-    pub fn set_basic_rummy_v1(&mut self, num_players: u8) -> GameResult<()> {
+    pub fn initialize_game_from_config(&mut self, config: GameConfig) -> GameResult<()> {
         if self.config.is_some() {
             return Err(crate::errors::GameError::ConfigError(
                 crate::errors::ConfigError::ConfigAlreadySet,
             ));
         }
-        let config = GameConfig::basic_rummy_v1(num_players)?;
         self.config = Some(config);
+        self.initialize_deck()?;
         Ok(())
     }
 
