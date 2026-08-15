@@ -89,6 +89,7 @@ impl Meld {
                         }
                         if let Some(new_end) = next_rank(*end)
                             && card_rank == new_end
+                            && card_rank > *start
                         {
                             *end = new_end;
                             self.card_ids.push(card.id);
