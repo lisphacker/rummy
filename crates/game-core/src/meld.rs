@@ -40,96 +40,6 @@ impl Meld {
             num_joker_cards,
         })
     }
-
-    pub fn add(&mut self, card: Card, rules: &MeldRulesConfig) -> GameResult<()> {
-        if self.card_ids.contains(&card.id) {
-            return error(MeldError::CardAlreadyInMeld);
-        }
-        match &mut self.meld_type {
-            MeldType::Set { rank, suits } => {
-                match card.face {
-                    crate::card::CardFace::Standard {
-                        rank: card_rank,
-                        suit,
-                    } => {
-                        if card_rank != *rank {
-                            return error(MeldError::SetMustHaveSameRank);
-                        }
-                        if suits.contains(&suit) {
-                            return error(MeldError::SetMustHaveUniqueSuits);
-                        }
-                        if suits.len() + self.num_joker_cards + 1 > 4 {
-                            return error(MeldError::SetCannotHaveMoreThanFourCards);
-                        }
-                        suits.insert(suit);
-                    }
-                    crate::card::CardFace::Joker => {
-                        if !rules.allow_jokers() {
-                            return error(MeldError::JokersNotAllowed);
-                        }
-                        if suits.len() + self.num_joker_cards + 1 > 4 {
-                            return error(MeldError::SetCannotHaveMoreThanFourCards);
-                        }
-                        self.num_joker_cards += 1;
-                    }
-                }
-                self.card_ids.push(card.id);
-                Ok(())
-            }
-            MeldType::Run { suit, start, end } => {
-                match card.face {
-                    crate::card::CardFace::Standard {
-                        rank: card_rank,
-                        suit: card_suit,
-                    } => {
-                        if card_suit != *suit {
-                            return error(MeldError::RunMustHaveSameSuit);
-                        }
-                        if let Some(new_start) = prev_rank(*start)
-                            && card_rank == new_start
-                        {
-                            *start = new_start;
-                            self.card_ids.push(card.id);
-                            return Ok(());
-                        }
-                        if let Some(new_end) = next_rank(*end)
-                            && card_rank == new_end
-                            && card_rank > *start
-                        {
-                            *end = new_end;
-                            self.card_ids.push(card.id);
-                            return Ok(());
-                        }
-                        if *end == Rank::King && card_rank == Rank::Ace {
-                            *end = Rank::Ace;
-                            self.card_ids.push(card.id);
-                            return Ok(());
-                        }
-                        error(MeldError::RunMustHaveConsecutiveRanks)
-                    }
-                    crate::card::CardFace::Joker => {
-                        if !rules.allow_jokers() {
-                            return error(MeldError::JokersNotAllowed);
-                        }
-                        // Joker can be added to either end of the run
-                        if let Some(new_start) = prev_rank(*start) {
-                            *start = new_start;
-                            self.num_joker_cards += 1;
-                            self.card_ids.push(card.id);
-                            return Ok(());
-                        }
-                        if let Some(new_end) = next_rank(*end) {
-                            *end = new_end;
-                            self.num_joker_cards += 1;
-                            self.card_ids.push(card.id);
-                            return Ok(());
-                        }
-                        error(MeldError::MeldHasTooManyJokerCards)
-                    }
-                }
-            }
-        }
-    }
 }
 
 fn error<T>(e: MeldError) -> GameResult<T> {
@@ -346,7 +256,7 @@ fn validate_unique_card_ids(cards: &[Card]) -> GameResult<Vec<CardId>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Meld, MeldType};
+    use super::Meld;
     use crate::{
         card::{Card, CardFace, Rank, Suit},
         errors::GameError,
@@ -581,54 +491,6 @@ mod tests {
     }
 
     #[test]
-    fn add_extends_a_set_with_a_valid_card() {
-        let cards = vec![
-            card(Rank::Seven, Suit::Clubs),
-            card(Rank::Seven, Suit::Diamonds),
-            card(Rank::Seven, Suit::Hearts),
-        ];
-        let added_card = card(Rank::Seven, Suit::Spades);
-        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
-            panic!("the initial set should be valid");
-        };
-
-        let result = meld.add(added_card, &rules());
-
-        assert!(result.is_ok());
-        assert!(meld.card_ids.contains(&added_card.id));
-        assert!(matches!(
-            meld.meld_type,
-            MeldType::Set { ref suits, .. } if suits.contains(&Suit::Spades)
-        ));
-    }
-
-    #[test]
-    fn add_extends_a_run_with_a_valid_card() {
-        let cards = vec![
-            card(Rank::Seven, Suit::Clubs),
-            card(Rank::Eight, Suit::Clubs),
-            card(Rank::Nine, Suit::Clubs),
-        ];
-        let added_card = card(Rank::Ten, Suit::Clubs);
-        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
-            panic!("the initial run should be valid");
-        };
-
-        let result = meld.add(added_card, &rules());
-
-        assert!(result.is_ok());
-        assert!(meld.card_ids.contains(&added_card.id));
-        assert!(matches!(
-            meld.meld_type,
-            MeldType::Run {
-                start: Rank::Seven,
-                end: Rank::Ten,
-                ..
-            }
-        ));
-    }
-
-    #[test]
     fn new_run_rejects_jokers_that_cannot_be_assigned_to_the_run() {
         let cards = vec![
             card(Rank::Seven, Suit::Clubs),
@@ -673,103 +535,6 @@ mod tests {
             };
             assert_eq!(meld.card_ids, expected_ids);
         }
-    }
-
-    #[test]
-    fn add_rejects_wrapping_a_high_ace_run_to_two() {
-        let cards = vec![
-            card(Rank::Queen, Suit::Clubs),
-            card(Rank::King, Suit::Clubs),
-            card(Rank::Ace, Suit::Clubs),
-        ];
-        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
-            panic!("the initial high-ace run should be valid");
-        };
-
-        let result = meld.add(card(Rank::Two, Suit::Clubs), &rules());
-
-        assert!(matches!(
-            result,
-            Err(GameError::MeldError(
-                crate::errors::MeldError::RunMustHaveConsecutiveRanks
-            ))
-        ));
-    }
-
-    #[test]
-    fn add_rejects_a_fifth_card_when_a_set_contains_jokers() {
-        let cards = vec![card(Rank::Seven, Suit::Clubs), joker(), joker()];
-        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
-            panic!("the initial set should be valid");
-        };
-        assert!(
-            meld.add(card(Rank::Seven, Suit::Diamonds), &rules())
-                .is_ok()
-        );
-
-        let result = meld.add(card(Rank::Seven, Suit::Hearts), &rules());
-
-        assert!(matches!(
-            result,
-            Err(GameError::MeldError(
-                crate::errors::MeldError::SetCannotHaveMoreThanFourCards
-            ))
-        ));
-    }
-
-    #[test]
-    fn add_rejects_a_card_id_already_in_the_meld() {
-        let duplicate = joker();
-        let cards = vec![
-            card(Rank::Seven, Suit::Clubs),
-            card(Rank::Seven, Suit::Diamonds),
-            duplicate,
-        ];
-        let Ok(mut meld) = Meld::new_set(&cards, &rules()) else {
-            panic!("the initial set should be valid");
-        };
-
-        let result = meld.add(duplicate, &rules());
-
-        assert!(matches!(
-            result,
-            Err(GameError::MeldError(
-                crate::errors::MeldError::CardAlreadyInMeld
-            ))
-        ));
-        assert_eq!(
-            meld.card_ids
-                .iter()
-                .filter(|&&card_id| card_id == duplicate.id)
-                .count(),
-            1
-        );
-    }
-
-    #[test]
-    fn add_extends_a_run_with_a_high_ace() {
-        let cards = vec![
-            card(Rank::Jack, Suit::Clubs),
-            card(Rank::Queen, Suit::Clubs),
-            card(Rank::King, Suit::Clubs),
-        ];
-        let ace = card(Rank::Ace, Suit::Clubs);
-        let Ok(mut meld) = Meld::new_run(&cards, &rules()) else {
-            panic!("the initial run should be valid");
-        };
-
-        let result = meld.add(ace, &rules());
-
-        assert!(result.is_ok());
-        assert!(meld.card_ids.contains(&ace.id));
-        assert!(matches!(
-            meld.meld_type,
-            MeldType::Run {
-                start: Rank::Jack,
-                end: Rank::Ace,
-                ..
-            }
-        ));
     }
 
     #[test]

@@ -7,11 +7,9 @@ pub enum MeldError {
     SetMustHaveSameRank,
     SetMustHaveUniqueSuits,
     SetHasTooManyJokers,
-    SetCannotHaveMoreThanFourCards,
     RunMustHaveSameSuit,
     RunMustHaveConsecutiveRanks,
     RankHasTooManyAces,
-    CardAlreadyInMeld,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
