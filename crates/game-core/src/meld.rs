@@ -277,12 +277,16 @@ fn validate_run_cards(
         }
 
         while remaining_jokers > 0 {
-            if let Some(next_rank) = next_rank(end)
+            if start == Rank::Ace && end == Rank::Ace {
+                break;
+            } else if let Some(next_rank) = next_rank(end)
                 && next_rank > start
             {
                 end = next_rank;
                 remaining_jokers -= 1;
-            } else if let Some(prev_rank) = prev_rank(start) {
+            } else if let Some(prev_rank) = prev_rank(start)
+                && prev_rank < end
+            {
                 start = prev_rank;
                 remaining_jokers -= 1;
             } else if end == Rank::King {
