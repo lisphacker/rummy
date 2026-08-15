@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, Rank, Suit, incr_rank, next_rank, prev_rank},
+    config::GameConfig,
     errors::{GameError, GameResult, MeldError},
     id::CardId,
-    rules::config::GameConfig,
 };
 use std::collections::BTreeSet;
 use std::collections::HashSet;
@@ -266,9 +266,9 @@ mod tests {
     use super::Meld;
     use crate::{
         card::{Card, CardFace, Rank, Suit},
+        config::GameConfig,
         errors::GameError,
         id::CardId,
-        rules::config::GameConfig,
     };
 
     fn rules() -> GameConfig {

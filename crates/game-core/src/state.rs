@@ -1,9 +1,8 @@
 use crate::card::{Card, Rank, Suit};
+use crate::config::GameConfig;
 use crate::id::{CardId, GameId, PlayerId};
 use crate::ordered_map::OrderedMap;
 use crate::player::Player;
-use crate::rules::config::GameConfig;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum GamePhase {
