@@ -20,9 +20,14 @@ pub enum HandError {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ConfigError {
+    UnsupportedPlayerCount,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum GameStateError {
     ConfigNotSet,
     ConfigAlreadySet,
-    UnsupportedPlayerCount,
+    InvalidGamePhaseForShuffle,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -30,6 +35,7 @@ pub enum GameError {
     MeldError(MeldError),
     HandError(HandError),
     ConfigError(ConfigError),
+    GameStateError(GameStateError),
 }
 
 pub type GameResult<T> = Result<T, GameError>;
