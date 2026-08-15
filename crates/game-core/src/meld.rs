@@ -12,13 +12,13 @@ fn all_unique<T: Eq + std::hash::Hash>(items: &[T]) -> bool {
     unique_items.len() == items.len()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MeldType {
     Set { rank: Rank, suits: BTreeSet<Suit> },
     Run { suit: Suit, start: Rank, end: Rank },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Meld {
     meld_type: MeldType,
     card_ids: Vec<CardId>,
@@ -574,33 +574,5 @@ mod tests {
         let result = Meld::new_run(&cards, &rules());
 
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn equivalent_sets_have_a_stable_serialized_representation() {
-        let cards = vec![
-            card(Rank::Seven, Suit::Clubs),
-            card(Rank::Seven, Suit::Diamonds),
-            card(Rank::Seven, Suit::Hearts),
-            card(Rank::Seven, Suit::Spades),
-        ];
-        let Ok(first_meld) = Meld::new_set(&cards, &rules()) else {
-            panic!("the set should be valid");
-        };
-        let Ok(expected) = serde_json::to_string(&first_meld) else {
-            panic!("the meld should serialize");
-        };
-
-        for _ in 0..64 {
-            let Ok(meld) = Meld::new_set(&cards, &rules()) else {
-                panic!("the set should be valid");
-            };
-            let Ok(serialized) = serde_json::to_string(&meld) else {
-                panic!("the meld should serialize");
-            };
-            println!("serialized: {}", serialized);
-            println!("expected:   {}", expected);
-            assert_eq!(serialized, expected);
-        }
     }
 }
