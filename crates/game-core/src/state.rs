@@ -85,6 +85,40 @@ impl GameState {
         Ok(())
     }
 
+    pub fn deal_cards_to_players(&mut self) -> GameResult<()> {
+        let config = self.ensure_config()?;
+        let player_count = self.players.len();
+        if player_count == 0 {
+            return Err(GameError::GameStateError(GameStateError::NoPlayers));
+        }
+        let cards_per_player = config.cards_per_player();
+        let total_cards_needed = player_count * cards_per_player as usize;
+        if self.draw_stack.len() < total_cards_needed {
+            return Err(GameError::GameStateError(
+                GameStateError::NotEnoughCardsInDrawStack,
+            ));
+        }
+        for _ in 0..cards_per_player {
+            self.players.iter_values_mut(|player| {
+                if let Some(card_id) = self.draw_stack.pop() {
+                    if let Some(card) = self.deck.get(&card_id) {
+                        player.draw_card(card.clone());
+                        Ok(())
+                    } else {
+                        Err(GameError::GameStateError(
+                            GameStateError::CardNotFoundInDeck,
+                        ))
+                    }
+                } else {
+                    Err(GameError::GameStateError(
+                        GameStateError::NotEnoughCardsInDrawStack,
+                    ))
+                }
+            })?;
+        }
+        Ok(())
+    }
+
     pub fn shuffle_draw_stack(&mut self) -> GameResult<()> {
         if self.phase != GamePhase::InitializingGame
             && !matches!(self.phase, GamePhase::RestockingDrawStack { .. })

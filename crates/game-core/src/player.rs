@@ -24,6 +24,13 @@ impl Player {
         }
     }
 
+    pub fn dealt(mut self, cards: impl IntoIterator<Item = Card>) -> Self {
+        for card in cards {
+            self.draw_card(card);
+        }
+        self
+    }
+
     pub fn draw_card(&mut self, card: Card) {
         self.hand.insert(card.id, card);
         self.uncategorized_cards.push(card.id);

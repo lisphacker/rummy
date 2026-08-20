@@ -28,6 +28,9 @@ pub enum GameStateError {
     ConfigNotSet,
     ConfigAlreadySet,
     InvalidGamePhaseForShuffle,
+    NoPlayers,
+    CardNotFoundInDeck,
+    NotEnoughCardsInDrawStack,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

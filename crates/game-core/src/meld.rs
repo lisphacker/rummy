@@ -7,11 +7,6 @@ use crate::{
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 
-fn all_unique<T: Eq + std::hash::Hash>(items: &[T]) -> bool {
-    let unique_items: HashSet<&T> = items.iter().collect();
-    unique_items.len() == items.len()
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MeldType {
     Set { rank: Rank, suits: BTreeSet<Suit> },

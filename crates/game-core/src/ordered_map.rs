@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::errors::GameResult;
+
 #[derive(Debug)]
 pub struct OrderedMap<K, V> {
     map: HashMap<K, V>,
@@ -24,6 +26,10 @@ where
         self.map.insert(key, value);
     }
 
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         self.map.get(key)
     }
@@ -45,6 +51,18 @@ where
 
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.keys.iter()
+    }
+
+    pub fn iter_values_mut(
+        &mut self,
+        mut f: impl FnMut(&mut V) -> GameResult<()>,
+    ) -> GameResult<()> {
+        for key in &self.keys {
+            if let Some(value) = self.map.get_mut(key) {
+                f(value)?;
+            }
+        }
+        Ok(())
     }
 }
 
