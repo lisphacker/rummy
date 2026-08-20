@@ -44,7 +44,7 @@ Goal: establish a trustworthy, documented baseline on which the rules engine can
    - Either correctly support joker validation behind configuration or explicitly reject jokers in `BasicRummyV1`; do not leave contradictory behavior.
    - Expose read-only meld data needed by transitions and views without allowing callers to violate invariants.
 
-- [ ] 3. Establish reusable deterministic test fixtures in `test-support`.
+- [x] 3. Establish reusable deterministic test fixtures in `test-support`.
    - Add fixed card/card-ID builders, ordered decks, player builders, and seeded shuffle helpers.
    - Ensure fixtures do not depend on wall-clock time or random UUID values when assertions require stable output.
 

@@ -7,9 +7,9 @@ license.workspace = true
 publish = false
 
 [dependencies]
+game-core = { path = "../game-core" }
 rand.workspace = true
 rand_chacha.workspace = true
-serde.workspace = true
 uuid.workspace = true
 
 [lints]

@@ -2297,7 +2297,6 @@ dependencies = [
  "rand_chacha 0.10.0",
  "serde",
  "smallvec",
- "test-support",
  "thiserror 2.0.19",
  "uuid",
 ]
@@ -6040,9 +6039,9 @@ dependencies = [
 name = "test-support"
 version = "0.1.0"
 dependencies = [
+ "game-core",
  "rand 0.10.2",
  "rand_chacha 0.10.0",
- "serde",
  "uuid",
 ]
 
